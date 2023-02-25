@@ -694,9 +694,13 @@ struct tog_view {
 	const char *action;
 };
 
+/* TODO:misha check smaller variants */
+#define TOG_HISTORY_SIZE	64
+#define TOG_PROMPT_SIZE		1024
+
 struct tog_history {
-	char bucket[64][1024];
-	int size;
+	char bucket[TOG_HISTORY_SIZE][TOG_PROMPT_SIZE];
+	int curhist;
 } history = { 0 };
 
 static const struct got_error *open_diff_view(struct tog_view *,
@@ -1297,9 +1301,14 @@ tog_resizeterm(void)
 static void
 history_add(char *line)
 {
-	strlcpy(history.bucket[history.size], line,
-	    sizeof(history.bucket[history.size]));
-	history.size++;
+	strlcpy(history.bucket[history.curhist], line,
+	    sizeof(history.bucket[0]));
+
+	/* Rewrite history from the start if it fills up */
+	if (history.curhist == TOG_HISTORY_SIZE - 1)
+		history.curhist = 0;
+	else
+		history.curhist++;
 }
 
 static void
