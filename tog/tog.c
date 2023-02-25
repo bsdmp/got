@@ -694,6 +694,11 @@ struct tog_view {
 	const char *action;
 };
 
+struct tog_history {
+	char bucket[64][1024];
+	int size;
+} history = { 0 };
+
 static const struct got_error *open_diff_view(struct tog_view *,
     struct got_object_id *, struct got_object_id *,
     const char *, const char *, int, int, int, struct tog_view *,
@@ -758,6 +763,7 @@ static const struct got_error* close_help_view(struct tog_view *);
 static const struct got_error *search_start_help_view(struct tog_view *);
 static void search_setup_help_view(struct tog_view *, FILE **, off_t **,
     size_t *, int **, int **, int **, int **);
+static void history_add(char *);
 
 static volatile sig_atomic_t tog_sigwinch_received;
 static volatile sig_atomic_t tog_sigpipe_received;
@@ -1288,13 +1294,104 @@ tog_resizeterm(void)
 	resize_term(lines, cols);
 }
 
-static const struct got_error *
+static void
+history_add(char *line)
+{
+	strlcpy(history.bucket[history.size], line,
+	    sizeof(history.bucket[history.size]));
+	history.size++;
+}
+
+static void
+readline(struct tog_view *view, char *buf, size_t buflen)
+{
+	int pos = 0;
+	int len = 0;
+	int c;
+	int curhist = -1;
+	char savedbuf[1024];
+
+	//cbreak();
+	//noecho();
+	keypad(stdscr, TRUE);
+	curs_set(1);
+	buf[0] = '/';
+	/* special case, if user press / and then KEY_UP/KEY_DOWN */
+	savedbuf[0] = '/';
+	savedbuf[1] = '\0';
+	mvwaddstr(view->window, view->nlines - 1, 0, buf);
+	pos++;
+	wclrtoeol(view->window);
+
+	for (;;) {
+		c = wgetch(view->window);
+
+		if (c == '\r') {
+			history_add(buf);
+			break;
+		} else if (isprint(c)) {
+			if (pos < buflen - 1) {
+				buf[pos++] = c;
+				buf[pos] = '\0';
+				len++;
+				strlcpy(savedbuf, buf, sizeof(savedbuf));
+			}
+		} else if (c == KEY_LEFT) {
+			if (pos > 1)
+				pos--;
+		} else if (c == KEY_RIGHT) {
+			if (pos <= len)
+				pos++;
+		} else if (c == KEY_UP) {
+			if (history.size > 0) {
+				if (curhist == -1)
+					curhist = history.size - 1;
+				else if (curhist == 0) {
+					curhist--;
+					strlcpy(buf, savedbuf, sizeof(buf));
+					pos = strlen(buf);
+					goto drawit;
+				} else
+					curhist--;
+				strlcpy(buf, history.bucket[curhist], buflen);
+				pos = strlen(buf);
+			}
+		} else if (c == KEY_DOWN) {
+			if (history.size > 0) {
+				if (curhist == -1)
+					curhist = 0;
+				else if (curhist == history.size - 1) {
+					curhist = -1;
+					strlcpy(buf, savedbuf, sizeof(buf));
+					pos = strlen(buf);
+					goto drawit;
+				} else
+					curhist++;
+				strlcpy(buf, history.bucket[curhist], buflen);
+				pos = strlen(buf);
+			}
+		}
+
+drawit:
+		wmove(view->window, view->nlines - 1, 0);
+		wclrtoeol(view->window);
+		mvwaddstr(view->window, view->nlines - 1, 0, buf);
+		wmove(view->window, view->nlines - 1, pos);
+		wrefresh(view->window);
+	}
+
+	curs_set(0);
+}
+
+;static const struct got_error *
 view_search_start(struct tog_view *view, int fast_refresh)
 {
 	const struct got_error *err = NULL;
 	struct tog_view *v = view;
 	char pattern[1024];
-	int ret;
+//	int ret;
+
+	memset(pattern, 0, sizeof(pattern));
 
 	if (view->search_started) {
 		regfree(&view->regex);
@@ -1311,21 +1408,22 @@ view_search_start(struct tog_view *view, int fast_refresh)
 	else if (view->mode == TOG_VIEW_SPLIT_VERT && view->parent)
 		v = view->parent;
 
-	mvwaddstr(v->window, v->nlines - 1, 0, "/");
-	wclrtoeol(v->window);
+//	mvwaddstr(v->window, v->nlines - 1, 0, "/");
+//	wclrtoeol(v->window);
 
 	nodelay(v->window, FALSE);  /* block for search term input */
-	nocbreak();
-	echo();
-	ret = wgetnstr(v->window, pattern, sizeof(pattern));
+	//nocbreak();
+	//echo();
+	//ret = wgetnstr(v->window, pattern, sizeof(pattern));
+	readline(v, pattern, sizeof(pattern));
 	wrefresh(v->window);
 	cbreak();
 	noecho();
 	nodelay(v->window, TRUE);
 	if (!fast_refresh)
 		halfdelay(10);
-	if (ret == ERR)
-		return NULL;
+//	if (ret == ERR)
+//		return NULL;
 
 	if (regcomp(&view->regex, pattern, REG_EXTENDED | REG_NEWLINE) == 0) {
 		err = view->search_start(view);
