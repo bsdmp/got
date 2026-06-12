@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//usr/include/**)",
+      "Bash(pkg-config --exists libbsd)",
+      "Bash(find / -iname \"sha1.h\")",
+      "Bash(git diff *)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

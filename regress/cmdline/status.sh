@@ -875,6 +875,128 @@ test_status_multiple_gitignore_files() {
 	test_done "$testroot" "$ret"
 }
 
+test_status_cvsignore_and_gitignore_together() {
+	local testroot=`test_init status_cvsignore_and_gitignore_together`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	# .cvsignore and .gitignore both live in the worktree root here.
+	# Patterns from both files must be honored; a directory's ignore
+	# lists must not clobber each other.
+	echo "unversioned file" > $testroot/wt/foo
+	echo "unversioned file" > $testroot/wt/bar
+	echo "unversioned file" > $testroot/wt/baz
+	echo "foo" > $testroot/wt/.cvsignore
+	echo "bar" > $testroot/wt/.gitignore
+
+	echo '?  .cvsignore' > $testroot/stdout.expected
+	echo '?  .gitignore' >> $testroot/stdout.expected
+	echo '?  baz' >> $testroot/stdout.expected
+	(cd $testroot/wt && got status > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
+test_status_global_gitignore() {
+	local testroot=`test_init status_global_gitignore`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	# Isolate $HOME for this test so we control ~/.gitconfig without
+	# depending on (or disturbing) whatever is configured for the real
+	# user running these tests. core.excludesfile is set with a leading
+	# "~/" to also exercise tilde expansion. "home_empty" has no
+	# .gitconfig at all, to test the baseline case hermetically too.
+	mkdir -p $testroot/home_empty
+	mkdir -p $testroot/home
+	cat > $testroot/home/.gitconfig <<EOF
+[core]
+	excludesfile = ~/.global_gitignore
+EOF
+	printf '*.o\n**/Session.vim\n' > $testroot/home/.global_gitignore
+
+	echo "unversioned file" > $testroot/wt/foo.o
+	echo "unversioned file" > $testroot/wt/foo.txt
+	echo "unversioned file" > $testroot/wt/Session.vim
+	mkdir -p $testroot/wt/epsilon/sub
+	echo "unversioned file" > $testroot/wt/epsilon/sub/bar.o
+	echo "unversioned file" > $testroot/wt/epsilon/sub/Session.vim
+
+	echo '?  Session.vim' > $testroot/stdout.expected
+	echo '?  epsilon/sub/Session.vim' >> $testroot/stdout.expected
+	echo '?  epsilon/sub/bar.o' >> $testroot/stdout.expected
+	echo '?  foo.o' >> $testroot/stdout.expected
+	echo '?  foo.txt' >> $testroot/stdout.expected
+	(cd $testroot/wt && HOME=$testroot/home_empty got status > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "status without core.excludesfile configured failed" >&2
+		diff -u $testroot/stdout.expected $testroot/stdout
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	echo '?  foo.txt' > $testroot/stdout.expected
+	(unset GOT_IGNORE_GITCONFIG && cd $testroot/wt && \
+		HOME=$testroot/home got status > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "status with core.excludesfile configured failed" >&2
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
+test_status_gitignore_root_pattern_applies_to_subdir() {
+	local testroot=`test_init status_gitignore_root_pattern_applies_to_subdir`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	# When 'got status' is scoped to a subdirectory, the directory walk
+	# starts at that subdirectory and never visits the worktree root, so
+	# a .gitignore at the root is not picked up by that walk. It must
+	# still be honored via the separate ancestor-directory lookup that
+	# runs before the walk starts.
+	echo "**/ignored.o" > $testroot/wt/.gitignore
+
+	echo "unversioned file" > $testroot/wt/epsilon/ignored.o
+	echo "unversioned file" > $testroot/wt/epsilon/unversioned
+
+	echo '?  epsilon/unversioned' > $testroot/stdout.expected
+	(cd $testroot/wt && got status epsilon > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
 test_status_status_code() {
 	local testroot=`test_init status_status_code`
 
@@ -1247,6 +1369,9 @@ run_test test_status_gitignore_leading_slashes
 run_test test_status_gitignore_trailing_slashes
 run_test test_status_gitignore_comments
 run_test test_status_multiple_gitignore_files
+run_test test_status_cvsignore_and_gitignore_together
+run_test test_status_global_gitignore
+run_test test_status_gitignore_root_pattern_applies_to_subdir
 run_test test_status_status_code
 run_test test_status_suppress
 run_test test_status_empty_file

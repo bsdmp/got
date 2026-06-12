@@ -51,7 +51,8 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
     char **gitconfig_author_name, char **gitconfig_author_email,
     struct got_remote_repo **remotes, int *nremotes,
     char **gitconfig_owner, char ***extnames, char ***extvals,
-    int *nextensions, const char *gitconfig_path)
+    int *nextensions, const char *gitconfig_path,
+    char **gitconfig_excludes)
 {
 	const struct got_error *err = NULL, *child_err = NULL;
 	int fd = -1;
@@ -76,6 +77,8 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 		*nremotes = 0;
 	if (gitconfig_owner)
 		*gitconfig_owner = NULL;
+	if (gitconfig_excludes)
+		*gitconfig_excludes = NULL;
 
 	fd = open(gitconfig_path, O_RDONLY | O_CLOEXEC);
 	if (fd == -1) {
@@ -171,6 +174,16 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 	err = got_privsep_recv_gitconfig_str(gitconfig_author_email, &ibuf);
 	if (err)
 		goto wait;
+
+	if (gitconfig_excludes) {
+		err = got_privsep_send_gitconfig_excludes_req(&ibuf);
+		if (err)
+			goto wait;
+
+		err = got_privsep_recv_gitconfig_str(gitconfig_excludes, &ibuf);
+		if (err)
+			goto wait;
+	}
 
 	if (remotes && nremotes) {
 		err = got_privsep_send_gitconfig_remotes_req(&ibuf);

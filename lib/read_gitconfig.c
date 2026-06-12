@@ -69,14 +69,14 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
     char **gitconfig_author_name, char **gitconfig_author_email,
     struct got_remote_repo **remotes, int *nremotes,
     char **gitconfig_owner, char ***extnames, char ***extvals,
-    int *nextensions, const char *gitconfig_path)
+    int *nextensions, const char *gitconfig_path, char **gitconfig_excludes)
 {
 	const struct got_error *err = NULL;
 	struct got_gitconfig *gitconfig = NULL;
 	struct got_gitconfig_list *tags;
 	struct got_gitconfig_list_node *node;
 	int fd, i;
-	const char *author, *email, *owner;
+	const char *author, *email, *owner, *excludes;
 
 	*gitconfig_repository_format_version = 0;
 	if (extnames)
@@ -158,6 +158,15 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 	if (email) {
 		*gitconfig_author_email = strdup(email);
 		if (*gitconfig_author_email == NULL) {
+			err = got_error_from_errno("strdup");
+			goto done;
+		}
+	}
+
+	excludes = got_gitconfig_get_str(gitconfig, "core", "excludesfile");
+	if (excludes && gitconfig_excludes) {
+		*gitconfig_excludes = strdup(excludes);
+		if (*gitconfig_excludes == NULL) {
 			err = got_error_from_errno("strdup");
 			goto done;
 		}

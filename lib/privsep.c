@@ -2134,6 +2134,17 @@ got_privsep_send_gitconfig_owner_req(struct imsgbuf *ibuf)
 }
 
 const struct got_error *
+got_privsep_send_gitconfig_excludes_req(struct imsgbuf *ibuf)
+{
+	if (imsg_compose(ibuf,
+	    GOT_IMSG_GITCONFIG_EXCLUDES_REQUEST, 0, 0, -1, NULL, 0) == -1)
+		return got_error_from_errno("imsg_compose "
+		    "GITCONFIG_EXCLUDES_REQUEST");
+
+	return flush_imsg(ibuf);
+}
+
+const struct got_error *
 got_privsep_recv_gitconfig_str(char **str, struct imsgbuf *ibuf)
 {
 	const struct got_error *err = NULL;

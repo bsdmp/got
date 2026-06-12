@@ -424,6 +424,10 @@ main(int argc, char *argv[])
 		case GOT_IMSG_GITCONFIG_OWNER_REQUEST:
 			err = gitconfig_owner_request(&ibuf, gitconfig);
 			break;
+		case GOT_IMSG_GITCONFIG_EXCLUDES_REQUEST:
+			err = gitconfig_str_request(&ibuf, gitconfig, "core",
+			    "excludesfile");
+			break;
 		default:
 			err = got_error(GOT_ERR_PRIVSEP_MSG);
 			break;

@@ -167,6 +167,8 @@ enum got_imsg_type {
 	GOT_IMSG_GITCONFIG_REMOTE,
 	GOT_IMSG_GITCONFIG_OWNER_REQUEST,
 	GOT_IMSG_GITCONFIG_OWNER,
+	GOT_IMSG_GITCONFIG_EXCLUDES_REQUEST,
+	GOT_IMSG_GITCONFIG_EXCLUDES,
 
 	/* Messages related to gotconfig files. */
 	GOT_IMSG_GOTCONFIG_PARSE_REQUEST,
@@ -792,6 +794,8 @@ const struct got_error *got_privsep_recv_gitconfig_pair(char **, char **,
 const struct got_error *got_privsep_recv_gitconfig_int(int *, struct imsgbuf *);
 const struct got_error *got_privsep_recv_gitconfig_remotes(
     struct got_remote_repo **, int *, struct imsgbuf *);
+const struct got_error *got_privsep_send_gitconfig_excludes_req(
+    struct imsgbuf *);
 
 const struct got_error *got_privsep_send_gotconfig_parse_req(struct imsgbuf *,
     int);

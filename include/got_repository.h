@@ -27,6 +27,21 @@ const struct got_error *got_repo_close(struct got_repository*);
 const char *got_repo_get_path(struct got_repository *);
 
 /*
+ * Obtain the absolute, resolved path of the file configured via
+ * core.excludesfile in the user's global ~/.gitconfig, or NULL if unset
+ * or unreadable.
+ */
+const char *got_repo_get_excludes(struct got_repository *);
+
+/*
+ * Obtain the parsed patterns from core.excludesfile, read once when the
+ * repository's gitconfig was loaded. Returns NULL if no excludes file
+ * is configured or could be read.
+ */
+struct got_pathlist_head *got_repo_get_global_ignores(
+    struct got_repository *);
+
+/*
  * Obtain the path to a non-bare repository's .git directory.
  * For bare repositories, this returns the same result as got_repo_get_path().
  */

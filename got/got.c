@@ -328,7 +328,7 @@ get_editor(char **abspath)
 
 static const struct got_error *
 apply_unveil(const char *repo_path, int repo_read_only,
-    const char *worktree_path)
+    const char *worktree_path, const char *gitconfig_excludes)
 {
 	const struct got_error *err;
 
@@ -336,6 +336,17 @@ apply_unveil(const char *repo_path, int repo_read_only,
 	if (unveil("gmon.out", "rwc") != 0)
 		return got_error_from_errno2("unveil", "gmon.out");
 #endif
+	/*
+	 * gitconfig_excludes is already an absolute, realpath(3)-resolved
+	 * path (see got_repo_read_gitconfig()), and may lie outside
+	 * repo_path/worktree_path. It must be unveiled before any other
+	 * path is unveiled below: once the first unveil(2) call has been
+	 * made, only paths unveiled so far remain visible, so unveiling
+	 * it later would fail.
+	 */
+	if (gitconfig_excludes && unveil(gitconfig_excludes, "r") != 0)
+		return got_error_from_errno2("unveil", gitconfig_excludes);
+
 	if (repo_path && unveil(repo_path, repo_read_only ? "r" : "rwc") != 0)
 		return got_error_from_errno2("unveil", repo_path);
 
@@ -415,7 +426,7 @@ cmd_init(int argc, char *argv[])
 	    !(error->code == GOT_ERR_ERRNO && errno == EEXIST))
 		goto done;
 
-	error = apply_unveil(repo_path, 0, NULL);
+	error = apply_unveil(repo_path, 0, NULL, NULL);
 	if (error)
 		goto done;
 
@@ -928,7 +939,8 @@ cmd_import(int argc, char *argv[])
 		error = got_error_from_errno2("unveil", editor);
 		goto done;
 	}
-	error = apply_unveil(got_repo_get_path(repo), 0, NULL);
+	/* got import does not consult core.excludesfile. */
+	error = apply_unveil(got_repo_get_path(repo), 0, NULL, NULL);
 	if (error)
 		goto done;
 
@@ -1784,7 +1796,7 @@ cmd_clone(int argc, char *argv[])
 	if (error)
 		goto done;
 
-	error = apply_unveil(repo_path, 0, NULL);
+	error = apply_unveil(repo_path, 0, NULL, NULL);
 	if (error)
 		goto done;
 
@@ -2691,7 +2703,7 @@ cmd_fetch(int argc, char *argv[])
 	if (error)
 		goto done;
 
-	error = apply_unveil(got_repo_get_path(repo), 0, NULL);
+	error = apply_unveil(got_repo_get_path(repo), 0, NULL, NULL);
 	if (error)
 		goto done;
 
@@ -3286,7 +3298,7 @@ cmd_checkout(int argc, char *argv[])
 		}
 	}
 
-	error = apply_unveil(got_repo_get_path(repo), 0, worktree_path);
+	error = apply_unveil(got_repo_get_path(repo), 0, worktree_path, NULL);
 	if (error)
 		goto done;
 
@@ -3736,7 +3748,8 @@ cmd_update(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -4925,7 +4938,7 @@ cmd_log(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 1,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL, NULL);
 	if (error)
 		goto done;
 
@@ -5491,7 +5504,8 @@ cmd_diff(int argc, char *argv[])
 	}
 
 	error = apply_unveil(got_repo_get_path(repo), 1,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -6057,9 +6071,11 @@ cmd_blame(int argc, char *argv[])
 			goto done;
 		}
 		free(p);
-		error = apply_unveil(got_repo_get_path(repo), 1, NULL);
+		error = apply_unveil(got_repo_get_path(repo), 1, NULL,
+		    NULL);
 	} else {
-		error = apply_unveil(got_repo_get_path(repo), 1, NULL);
+		error = apply_unveil(got_repo_get_path(repo), 1, NULL,
+		    NULL);
 		if (error)
 			goto done;
 		error = got_repo_map_path(&in_repo_path, repo, path);
@@ -6463,11 +6479,13 @@ cmd_tree(int argc, char *argv[])
 			goto done;
 		}
 		free(p);
-		error = apply_unveil(got_repo_get_path(repo), 1, NULL);
+		error = apply_unveil(got_repo_get_path(repo), 1, NULL,
+		    NULL);
 		if (error)
 			goto done;
 	} else {
-		error = apply_unveil(got_repo_get_path(repo), 1, NULL);
+		error = apply_unveil(got_repo_get_path(repo), 1, NULL,
+		    NULL);
 		if (error)
 			goto done;
 		if (path == NULL)
@@ -6660,6 +6678,7 @@ cmd_status(int argc, char *argv[])
 	struct got_worktree *worktree = NULL;
 	struct got_status_arg st;
 	char *cwd = NULL;
+	char *gitconfig_path = NULL;
 	struct got_pathlist_head paths;
 	int ch, i, no_ignores = 0;
 	int *pack_fds = NULL;
@@ -6735,13 +6754,17 @@ cmd_status(int argc, char *argv[])
 		goto done;
 	}
 
+	error = get_gitconfig_path(&gitconfig_path);
+	if (error)
+		goto done;
 	error = got_repo_open(&repo, got_worktree_get_repo_path(worktree),
-	    NULL, pack_fds);
+	    gitconfig_path, pack_fds);
 	if (error != NULL)
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 1,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    got_repo_get_excludes(repo));
 	if (error)
 		goto done;
 
@@ -7032,7 +7055,8 @@ cmd_ref(int argc, char *argv[])
 #endif
 
 	error = apply_unveil(got_repo_get_path(repo), do_list,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -7411,7 +7435,8 @@ cmd_branch(int argc, char *argv[])
 #endif
 
 	error = apply_unveil(got_repo_get_path(repo), do_list,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -8172,7 +8197,8 @@ cmd_tag(int argc, char *argv[])
 				err(1, "pledge");
 #endif
 		}
-		error = apply_unveil(got_repo_get_path(repo), 1, NULL);
+		error = apply_unveil(got_repo_get_path(repo), 1, NULL,
+		    NULL);
 		if (error)
 			goto done;
 		error = list_tags(repo, tag_name, verify_tags, allowed_signers,
@@ -8206,7 +8232,8 @@ cmd_tag(int argc, char *argv[])
 			if (error)
 				goto done;
 		}
-		error = apply_unveil(got_repo_get_path(repo), 0, NULL);
+		error = apply_unveil(got_repo_get_path(repo), 0, NULL,
+		    got_repo_get_excludes(repo));
 		if (error)
 			goto done;
 
@@ -8349,7 +8376,8 @@ cmd_add(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 1,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -8523,7 +8551,8 @@ cmd_remove(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 1,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -8789,7 +8818,8 @@ cmd_patch(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error != NULL)
 		goto done;
 
@@ -9263,7 +9293,8 @@ cmd_revert(int argc, char *argv[])
 	 * XXX "c" perm needed on repo dir to delete merge references.
 	 */
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -9771,7 +9802,8 @@ cmd_commit(int argc, char *argv[])
 	}
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    got_repo_get_excludes(repo));
 	if (error)
 		goto done;
 
@@ -10285,7 +10317,8 @@ cmd_send(int argc, char *argv[])
 	if (error)
 		goto done;
 
-	error = apply_unveil(got_repo_get_path(repo), 0, NULL);
+	error = apply_unveil(got_repo_get_path(repo), 0, NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -10759,7 +10792,8 @@ cmd_cherrypick(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -10908,7 +10942,8 @@ cmd_backout(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -11795,7 +11830,8 @@ cmd_rebase(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    got_repo_get_excludes(repo));
 	if (error)
 		goto done;
 
@@ -13144,7 +13180,8 @@ cmd_histedit(int argc, char *argv[])
 		if (error != NULL)
 			goto done;
 		error = apply_unveil(got_repo_get_path(repo), 0,
-		    worktree ? got_worktree_get_root_path(worktree) : NULL);
+		    worktree ? got_worktree_get_root_path(worktree) : NULL,
+		    NULL);
 		if (error)
 			goto done;
 		error = process_backup_refs(
@@ -13175,7 +13212,8 @@ cmd_histedit(int argc, char *argv[])
 			}
 		}
 		error = apply_unveil(got_repo_get_path(repo), 0,
-		    got_worktree_get_root_path(worktree));
+		    got_worktree_get_root_path(worktree),
+		    got_repo_get_excludes(repo));
 		if (error)
 			goto done;
 	}
@@ -13646,7 +13684,8 @@ cmd_integrate(int argc, char *argv[])
 		goto done;
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -13859,7 +13898,8 @@ cmd_merge(int argc, char *argv[])
 	}
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    worktree ? got_worktree_get_root_path(worktree) : NULL);
+	    worktree ? got_worktree_get_root_path(worktree) : NULL,
+	    got_repo_get_excludes(repo));
 	if (error)
 		goto done;
 
@@ -14217,7 +14257,8 @@ cmd_stage(int argc, char *argv[])
 		}
 	}
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -14347,7 +14388,8 @@ cmd_unstage(int argc, char *argv[])
 	}
 
 	error = apply_unveil(got_repo_get_path(repo), 0,
-	    got_worktree_get_root_path(worktree));
+	    got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 
@@ -14651,7 +14693,8 @@ cmd_cat(int argc, char *argv[])
 	if (error != NULL)
 		goto done;
 
-	error = apply_unveil(got_repo_get_path(repo), 1, NULL);
+	error = apply_unveil(got_repo_get_path(repo), 1, NULL,
+	    NULL);
 	if (error)
 		goto done;
 
@@ -14887,7 +14930,8 @@ cmd_info(int argc, char *argv[])
 	if (pledge("stdio rpath flock unveil", NULL) == -1)
 		err(1, "pledge");
 #endif
-	error = apply_unveil(NULL, 0, got_worktree_get_root_path(worktree));
+	error = apply_unveil(NULL, 0, got_worktree_get_root_path(worktree),
+	    NULL);
 	if (error)
 		goto done;
 

@@ -151,7 +151,8 @@ got_repo_init_gitconfig(struct got_repository *repo,
 		    &repo->gitconfig_author_name, &repo->gitconfig_author_email,
 		    &repo->gitconfig_remotes, &repo->ngitconfig_remotes,
 		    &repo->gitconfig_owner, &repo->extnames, &repo->extvals,
-		    &repo->nextensions, path);
+		    &repo->nextensions, path,
+		    NULL);
 		if (err)
 			goto done;
 	} else if (algo == GOT_HASH_SHA256)

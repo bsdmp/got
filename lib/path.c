@@ -140,6 +140,31 @@ got_path_strip(char **out, const char *path, int n)
 	return NULL;
 }
 
+const struct got_error *
+got_path_expand_tilde(char **expanded, const char *path)
+{
+	const char *homedir;
+
+	*expanded = NULL;
+
+	if (path[0] == '~' && (path[1] == '/' || path[1] == '\0')) {
+		homedir = getenv("HOME");
+		if (homedir != NULL && homedir[0] != '\0') {
+			if (asprintf(expanded, "%s%s", homedir,
+			    path + 1) == -1) {
+				*expanded = NULL;
+				return got_error_from_errno("asprintf");
+			}
+			return NULL;
+		}
+	}
+
+	*expanded = strdup(path);
+	if (*expanded == NULL)
+		return got_error_from_errno("strdup");
+	return NULL;
+}
+
 int
 got_path_is_root_dir(const char *path)
 {
@@ -262,6 +287,54 @@ got_pathlist_free(struct got_pathlist_head *pathlist, int freemask)
 		RB_REMOVE(got_pathlist_head, pathlist, pe);
 		free(pe);
 	}
+}
+
+const struct got_error *
+got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
+    const char *prefix)
+{
+	const struct got_error *err = NULL;
+	struct got_pathlist_entry *pe;
+	char *line = NULL, *pattern;
+	size_t linesize = 0;
+	ssize_t linelen;
+
+	while ((linelen = getline(&line, &linesize, f)) != -1) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
+
+		/* Skip blank lines, comments, and (for now) negated patterns. */
+		if (line[0] == '\0' || line[0] == '#' || line[0] == '!')
+			continue;
+
+		if (prefix != NULL && prefix[0] != '\0') {
+			if (asprintf(&pattern, "%s/%s", prefix, line) == -1) {
+				err = got_error_from_errno("asprintf");
+				break;
+			}
+		} else {
+			pattern = strdup(line);
+			if (pattern == NULL) {
+				err = got_error_from_errno("strdup");
+				break;
+			}
+		}
+
+		err = got_pathlist_insert(&pe, patterns, pattern, NULL);
+		/*
+		 * got_pathlist_insert() silently rejects a duplicate
+		 * pattern; free it.
+		 */
+		if (err || pe == NULL)
+			free(pattern);
+		if (err)
+			break;
+	}
+	if (err == NULL && ferror(f))
+		err = got_error_from_errno("getline");
+
+	free(line);
+	return err;
 }
 
 static const struct got_error *

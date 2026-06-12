@@ -3960,8 +3960,10 @@ nor the
 .Ev GOT_AUTHOR
 environment variable provide author information.
 .It Ev GOT_IGNORE_GITCONFIG
-If this variable is set then any remote repository definitions or author
-information found in Git configuration files will be ignored.
+If this variable is set then any remote repository definitions, author
+information, or
+.Dv core.excludesfile
+setting found in Git configuration files will be ignored.
 .It Ev GOT_LOG_DEFAULT_LIMIT
 The default limit on the number of commits traversed by
 .Cm got log .

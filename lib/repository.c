@@ -98,6 +98,92 @@ get_boolean_val(const char *val)
 }
 
 const char *
+got_repo_get_excludes(struct got_repository *repo)
+{
+	return repo->global_gitconfig_excludesfile;
+}
+
+struct got_pathlist_head *
+got_repo_get_global_ignores(struct got_repository *repo)
+{
+	if (RB_EMPTY(&repo->global_ignores))
+		return NULL;
+	return &repo->global_ignores;
+}
+
+/*
+ * Resolve repo->global_gitconfig_excludesfile (the raw core.excludesfile
+ * value from ~/.gitconfig, if any) into an absolute, realpath(3)-resolved
+ * path, expanding a leading "~" along the way. A configured but
+ * missing/unreadable excludes file is left as NULL rather than treated
+ * as an error, matching the tolerance applied elsewhere to a missing
+ * .gitignore or .cvsignore; got_repo_get_excludes() callers (namely
+ * apply_unveil() in got.c) therefore never see a path that does not
+ * exist, which unveil(2) requires.
+ */
+static const struct got_error *
+resolve_excludesfile(struct got_repository *repo)
+{
+	const struct got_error *err;
+	char *raw, *expanded, *real_path;
+
+	if (repo->global_gitconfig_excludesfile == NULL)
+		return NULL;
+
+	raw = repo->global_gitconfig_excludesfile;
+	repo->global_gitconfig_excludesfile = NULL;
+
+	err = got_path_expand_tilde(&expanded, raw);
+	free(raw);
+	if (err)
+		return err;
+
+	real_path = realpath(expanded, NULL);
+	if (real_path == NULL) {
+		if (errno != ENOENT && errno != EACCES && errno != ENOTDIR) {
+			err = got_error_from_errno2("realpath", expanded);
+			free(expanded);
+			return err;
+		}
+		free(expanded);
+		return NULL;
+	}
+
+	free(expanded);
+	repo->global_gitconfig_excludesfile = real_path;
+	return NULL;
+}
+
+/*
+ * Read core.excludesfile, once, into a flat list of raw patterns.
+ * A missing or unreadable file simply contributes no patterns, matching
+ * the tolerance already applied to per-directory .cvsignore/.gitignore.
+ */
+static const struct got_error *
+load_global_ignores(struct got_repository *repo)
+{
+	const struct got_error *err;
+	FILE *f;
+
+	RB_INIT(&repo->global_ignores);
+
+	if (repo->global_gitconfig_excludesfile == NULL)
+		return NULL;
+
+	f = fopen(repo->global_gitconfig_excludesfile, "re");
+	if (f == NULL)
+		return (errno == ENOENT || errno == EACCES) ? NULL :
+		    got_error_from_errno2("fopen",
+		    repo->global_gitconfig_excludesfile);
+
+	err = got_path_read_ignore_patterns(&repo->global_ignores, f, NULL);
+	if (fclose(f) == EOF && err == NULL)
+		err = got_error_from_errno2("fclose",
+		    repo->global_gitconfig_excludesfile);
+	return err;
+}
+
+const char *
 got_repo_get_path(struct got_repository *repo)
 {
 	return repo->path;
@@ -630,10 +716,19 @@ read_gitconfig(struct got_repository *repo, const char *global_gitconfig_path)
 		    &repo->global_gitconfig_author_name,
 		    &repo->global_gitconfig_author_email,
 		    NULL, NULL, NULL, NULL, NULL, NULL,
-		    global_gitconfig_path);
+		    global_gitconfig_path,
+		    &repo->global_gitconfig_excludesfile);
+		if (err)
+			return err;
+
+		err = resolve_excludesfile(repo);
 		if (err)
 			return err;
 	}
+
+	err = load_global_ignores(repo);
+	if (err)
+		return err;
 
 	/* Read repository's .git/config file. */
 	repo_gitconfig_path = got_repo_get_path_gitconfig(repo);
@@ -645,7 +740,8 @@ read_gitconfig(struct got_repository *repo, const char *global_gitconfig_path)
 	    &repo->gitconfig_author_name, &repo->gitconfig_author_email,
 	    &repo->gitconfig_remotes, &repo->ngitconfig_remotes,
 	    &repo->gitconfig_owner, &repo->extnames, &repo->extvals,
-	    &repo->nextensions, repo_gitconfig_path);
+	    &repo->nextensions, repo_gitconfig_path,
+	    NULL);
 	if (err)
 		goto done;
 
@@ -669,6 +765,12 @@ read_gitconfig(struct got_repository *repo, const char *global_gitconfig_path)
 		repo->global_gitconfig_author_name = NULL;
 		free(repo->global_gitconfig_author_email);
 		repo->global_gitconfig_author_email = NULL;
+
+		free(repo->global_gitconfig_excludesfile);
+		repo->global_gitconfig_excludesfile = NULL;
+
+		got_pathlist_free(&repo->global_ignores, GOT_PATHLIST_FREE_PATH);
+		RB_INIT(&repo->global_ignores);
 	}
 
 done:

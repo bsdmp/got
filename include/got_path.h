@@ -49,6 +49,21 @@ const struct got_error *got_path_skip_common_ancestor(char **, const char *,
  */
 const struct got_error *got_path_strip(char **, const char *, int);
 
+/*
+ * Expand a leading "~/" (or a bare "~") into the current user's home
+ * directory, as shells and Git itself do for config values such as
+ * core.excludesfile. "~user/" is intentionally not supported. If path
+ * has no leading "~" or $HOME is not set, a copy of path is returned
+ * unchanged. The result is allocated with malloc(3).
+ *
+ * Deliberately hand-rolled rather than glob(3)'s GLOB_TILDE or
+ * wordexp(3), like git and OpenSSH do it: both are pattern/shell
+ * expanders with broader semantics than a literal path needs, and
+ * "~user" support would need getpwnam(3), an extra pledge(2) promise
+ * in the privsep helpers that link this file.
+ */
+const struct got_error *got_path_expand_tilde(char **, const char *);
+
 /* Determine whether a path points to the root directory "/" . */
 int got_path_is_root_dir(const char *);
 
@@ -92,6 +107,17 @@ const struct got_error *got_pathlist_insert(struct got_pathlist_entry **,
 
 /* Free resources allocated for a path list. */
 void got_pathlist_free(struct got_pathlist_head *, int);
+
+/*
+ * Parse gitignore(5)-style patterns from a FILE, one per line, into an
+ * already-initialized path list: blank lines, "#" comments, and (for now)
+ * "!"-negated patterns are skipped. If prefix is neither NULL nor empty,
+ * each pattern is stored as "prefix/pattern"; otherwise it is stored
+ * as-is. The FILE is read to EOF but not closed; that remains the
+ * caller's responsibility.
+ */
+const struct got_error *got_path_read_ignore_patterns(
+    struct got_pathlist_head *, FILE *, const char *);
 
 /* Attempt to create a directory at a given path. */
 const struct got_error *got_path_mkdir(const char *);

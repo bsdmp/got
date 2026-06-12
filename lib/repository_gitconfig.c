@@ -84,5 +84,7 @@ got_repo_free_gitconfig(struct got_repository *repo)
 	}
 	free(repo->extnames);
 	free(repo->extvals);
+	free(repo->global_gitconfig_excludesfile);
+	got_pathlist_free(&repo->global_ignores, GOT_PATHLIST_FREE_PATH);
 }
 
