@@ -3680,7 +3680,7 @@ struct diff_dir_cb_arg {
     void *cancel_arg;
     /* A pathlist containing per-directory pathlists of ignore patterns. */
 //    struct got_pathlist_head ignores[IGNORES_MAX];
-    struct got_pathlist_head ignores[IGNORES_MAX];
+    struct got_pathlist_head (*ignores)[IGNORES_MAX];
     int report_unchanged;
     int no_ignores;
 };
@@ -3889,12 +3889,13 @@ match_path(const char *pattern, size_t pattern_len, const char *path,
 }
 
 static int
-match_ignores(struct got_pathlist_head *ignores_list, const char *path)
+match_ignores(struct got_pathlist_head (*ignores_list)[IGNORES_MAX],
+    const char *path)
 {
 	int i;
 	for (i = 0; i < IGNORES_MAX; i++) {
 		struct got_pathlist_entry *pe;
-		struct got_pathlist_head *ignores = &ignores_list[i];
+		struct got_pathlist_head *ignores = &(*ignores_list)[i];
 
 		if (ignores == NULL)
 			continue;
@@ -4048,13 +4049,13 @@ status_traverse(void *arg, const char *path, int dirfd)
 	if (a->no_ignores)
 		return NULL;
 
-	err = add_ignores(&a->ignores[IGNORE_CVS], a->worktree->root_path,
+	err = add_ignores(&(*a->ignores)[IGNORE_CVS], a->worktree->root_path,
 	    path, dirfd, ".cvsignore");
 	if (err)
 		return err;
 
-	err = add_ignores(&a->ignores[IGNORE_GIT], a->worktree->root_path, path,
-	    dirfd, ".gitignore");
+	err = add_ignores(&(*a->ignores)[IGNORE_GIT], a->worktree->root_path,
+	    path, dirfd, ".gitignore");
 
 	return err;
 }
@@ -4063,7 +4064,7 @@ static const struct got_error *
 report_single_file_status(const char *path, const char *ondisk_path,
     struct got_fileindex *fileindex, got_worktree_status_cb status_cb,
     void *status_arg, struct got_repository *repo, int report_unchanged,
-    struct got_pathlist_head *ignores, int no_ignores)
+    struct got_pathlist_head (*ignores)[IGNORES_MAX], int no_ignores)
 {
 	struct got_fileindex_entry *ie;
 	struct stat sb;
@@ -4170,7 +4171,7 @@ static const struct got_error *
 report_children(struct got_pathlist_head *children,
     struct got_worktree *worktree, struct got_fileindex *fileindex,
     struct got_repository *repo, int is_root_dir, int report_unchanged,
-    struct got_pathlist_head *ignores, int no_ignores,
+    struct got_pathlist_head (*ignores)[IGNORES_MAX], int no_ignores,
     got_worktree_status_cb status_cb, void *status_arg,
     got_cancel_cb cancel_cb, void *cancel_arg)
 {
@@ -4233,7 +4234,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 	if (ie) {
 		err = report_single_file_status(path, ondisk_path,
 		    fileindex, status_cb, status_arg, repo,
-		    report_unchanged, ignores, no_ignores);
+		    report_unchanged, &ignores, no_ignores);
 		goto done;
 	} else {
 		struct find_missing_children_args fmca;
@@ -4264,14 +4265,14 @@ worktree_status(struct got_worktree *worktree, const char *path,
 				err = report_single_file_status(path,
 				    ondisk_path, fileindex,
 				    status_cb, status_arg, repo,
-				    report_unchanged, ignores, no_ignores);
+				    report_unchanged, &ignores, no_ignores);
 				if (err)
 					goto done;
 			} else {
 				err = report_children(&missing_children,
 				    worktree, fileindex, repo,
 				    (path[0] == '\0'), report_unchanged,
-				    ignores, no_ignores,
+				    &ignores, no_ignores,
 				    status_cb, status_arg,
 				    cancel_cb, cancel_arg);
 				if (err)
@@ -4300,8 +4301,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 			if (err)
 				goto done;
 		}
-		//arg.ignores = ignores;
-		memcpy(arg.ignores, ignores, sizeof(arg.ignores));
+		arg.ignores = &ignores;
 		err = got_fileindex_diff_dir(fileindex, fd,
 		    worktree->root_path, path, repo, &fdiff_cb, &arg);
 	}
