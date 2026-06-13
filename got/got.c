@@ -6670,6 +6670,7 @@ cmd_status(int argc, char *argv[])
 	struct got_worktree *worktree = NULL;
 	struct got_status_arg st;
 	char *cwd = NULL;
+	char *gitconfig_path = NULL;
 	struct got_pathlist_head paths;
 	int ch, i, no_ignores = 0;
 	int *pack_fds = NULL;
@@ -6745,8 +6746,12 @@ cmd_status(int argc, char *argv[])
 		goto done;
 	}
 
+	error = get_gitconfig_path(&gitconfig_path);
+	if (error)
+		goto done;
+	printf("%s: gitconfig_path=%s\n", __func__, gitconfig_path);
 	error = got_repo_open(&repo, got_worktree_get_repo_path(worktree),
-	    NULL, pack_fds);
+	    gitconfig_path, pack_fds);
 	if (error != NULL)
 		goto done;
 

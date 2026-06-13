@@ -165,6 +165,7 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 
 	// XXX misha: wtf is this?
 	excludes = got_gitconfig_get_str(gitconfig, "core", "excludesfile");
+	printf("%s: excludes=%s\n", __func__, excludes);
 	if (excludes) {
 		*gitconfig_excludes = strdup(excludes);
 		if (*gitconfig_excludes == NULL) {

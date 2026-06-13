@@ -179,6 +179,7 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 		goto wait;
 
 	err = got_privsep_recv_gitconfig_str(gitconfig_excludes, &ibuf);
+//	printf("%s: gitconfig_excludes=%s\n", __func__, gitconfig_excludes);
 	if (err)
 		goto wait;
 

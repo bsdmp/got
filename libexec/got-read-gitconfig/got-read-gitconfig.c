@@ -124,6 +124,7 @@ gitconfig_str_request(struct imsgbuf *ibuf, struct got_gitconfig *gitconfig,
 		return got_error(GOT_ERR_PRIVSEP_MSG);
 
 	value = got_gitconfig_get_str(gitconfig, section, tag);
+	printf("%s: value=%s\n", __func__, value);
 	return send_gitconfig_str(ibuf, value);
 }
 
