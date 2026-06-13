@@ -26,6 +26,9 @@ const struct got_error *got_repo_close(struct got_repository*);
 /* Obtain the on-disk path to the repository. */
 const char *got_repo_get_path(struct got_repository *);
 
+/* Obtain global gitignore file */
+const char *got_repo_get_excludes(struct got_repository *);
+
 /*
  * Obtain the path to a non-bare repository's .git directory.
  * For bare repositories, this returns the same result as got_repo_get_path().

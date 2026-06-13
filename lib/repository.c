@@ -98,6 +98,12 @@ get_boolean_val(const char *val)
 }
 
 const char *
+got_repo_get_excludes(struct got_repository *repo)
+{
+	return repo->global_gitconfig_excludesfile;
+}
+
+const char *
 got_repo_get_path(struct got_repository *repo)
 {
 	return repo->path;
@@ -630,7 +636,8 @@ read_gitconfig(struct got_repository *repo, const char *global_gitconfig_path)
 		    &repo->global_gitconfig_author_name,
 		    &repo->global_gitconfig_author_email,
 		    NULL, NULL, NULL, NULL, NULL, NULL,
-		    global_gitconfig_path);
+		    global_gitconfig_path,
+		    &repo->global_gitconfig_excludesfile);
 		if (err)
 			return err;
 	}
@@ -645,7 +652,8 @@ read_gitconfig(struct got_repository *repo, const char *global_gitconfig_path)
 	    &repo->gitconfig_author_name, &repo->gitconfig_author_email,
 	    &repo->gitconfig_remotes, &repo->ngitconfig_remotes,
 	    &repo->gitconfig_owner, &repo->extnames, &repo->extvals,
-	    &repo->nextensions, repo_gitconfig_path);
+	    &repo->nextensions, repo_gitconfig_path,
+	    &repo->global_gitconfig_excludesfile);
 	if (err)
 		goto done;
 

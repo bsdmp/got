@@ -131,6 +131,7 @@ struct got_repository {
 	char **extnames;
 	char **extvals;
 	int nextensions;
+	char *global_gitconfig_excludesfile;
 
 	/* Settings read from got.conf. */
 	struct got_gotconfig *gotconfig;
@@ -179,7 +180,7 @@ void got_repo_unpin_pack(struct got_repository *);
 
 const struct got_error *got_repo_read_gitconfig(int *, char **, char **,
     struct got_remote_repo **, int *, char **, char ***, char ***, int *,
-    const char *);
+    const char *, char **);
 
 const struct got_error *got_repo_temp_fds_get(int *, int *,
     struct got_repository *);

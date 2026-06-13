@@ -3665,6 +3665,7 @@ done:
 enum got_ignore_files {
 	IGNORE_CVS,
 	IGNORE_GIT,
+	IGNORE_GLOBAL,
 	IGNORES_MAX,
 };
 
@@ -4056,6 +4057,11 @@ status_traverse(void *arg, const char *path, int dirfd)
 
 	err = add_ignores(&(*a->ignores)[IGNORE_GIT], a->worktree->root_path,
 	    path, dirfd, ".gitignore");
+	if (err)
+		return err;
+
+//	err = add_ignores(&(*a->ignores)[IGNORE_GLOBAL], a->worktree->root_path,
+//	    path, dirfd, got_repo_get_excludes(a->repo));
 
 	return err;
 }
@@ -4092,8 +4098,8 @@ report_single_file_status(const char *path, const char *ondisk_path,
 }
 
 static const struct got_error *
-add_ignores_from_parent_paths(struct got_pathlist_head *ignores,
-    const char *root_path, const char *path)
+add_ignores_from_parent_paths(struct got_repository *repo,
+    struct got_pathlist_head *ignores, const char *root_path, const char *path)
 {
 	const struct got_error *err;
 	char *parent_path, *next_parent_path = NULL;
@@ -4107,6 +4113,11 @@ add_ignores_from_parent_paths(struct got_pathlist_head *ignores,
 	    ".gitignore");
 	if (err)
 		return err;
+
+//	err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, "", -1,
+//	    got_repo_get_excludes(repo));
+//	if (err)
+//		return err;
 
 	err = got_path_dirname(&parent_path, path);
 	if (err) {
@@ -4123,6 +4134,10 @@ add_ignores_from_parent_paths(struct got_pathlist_head *ignores,
 		    ".gitignore");
 		if (err)
 			break;
+//		err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, parent_path, -1,
+//		    got_repo_get_excludes(repo));
+//		if (err)
+//			break;
 		err = got_path_dirname(&next_parent_path, parent_path);
 		if (err) {
 			if (err->code == GOT_ERR_BAD_PATH)
@@ -4224,6 +4239,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 
 	RB_INIT(&ignores[IGNORE_CVS]);
 	RB_INIT(&ignores[IGNORE_GIT]);
+	RB_INIT(&ignores[IGNORE_GLOBAL]);
 	RB_INIT(&missing_children);
 
 	if (asprintf(&ondisk_path, "%s%s%s",
@@ -4256,8 +4272,8 @@ worktree_status(struct got_worktree *worktree, const char *path,
 			err = got_error_from_errno2("open", ondisk_path);
 		else {
 			if (!no_ignores) {
-				err = add_ignores_from_parent_paths(ignores,
-				    worktree->root_path, ondisk_path);
+				err = add_ignores_from_parent_paths(repo,
+				    ignores, worktree->root_path, ondisk_path);
 				if (err)
 					goto done;
 			}
@@ -4296,7 +4312,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 		arg.report_unchanged = report_unchanged;
 		arg.no_ignores = no_ignores;
 		if (!no_ignores) {
-			err = add_ignores_from_parent_paths(ignores,
+			err = add_ignores_from_parent_paths(repo, ignores,
 			    worktree->root_path, path);
 			if (err)
 				goto done;
