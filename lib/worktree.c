@@ -3929,9 +3929,9 @@ match_ignores(struct got_pathlist_head (*ignores_list)[IGNORES_MAX],
 		}
 
 		/*
-		 * The ignores pathlist contains ignore lists from children before
-		 * parents, so we can find the most specific ignorelist by walking
-		 * ignores backwards.
+		 * The ignores pathlist contains ignore lists from children
+		 * before parents, so we can find the most specific ignorelist
+		 * by walking ignores backwards.
 		 */
 		pe = RB_MAX(got_pathlist_head, ignores);
 		while (pe) {
