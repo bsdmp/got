@@ -167,7 +167,9 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 	excludes = got_gitconfig_get_str(gitconfig, "core", "excludesfile");
 	printf("%s: excludes=%s\n", __func__, excludes);
 	if (excludes) {
-		*gitconfig_excludes = strdup(excludes);
+		char *real_path = NULL;
+		real_path = realpath(excludes, NULL);
+		*gitconfig_excludes = real_path;
 		if (*gitconfig_excludes == NULL) {
 			err = got_error_from_errno("strdup");
 			goto done;

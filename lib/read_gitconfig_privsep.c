@@ -59,6 +59,7 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 	int imsg_fds[2] = { -1, -1 };
 	pid_t pid;
 	struct imsgbuf ibuf;
+	char *real_path;
 
 	memset(&ibuf, 0, sizeof(ibuf));
 
@@ -184,6 +185,12 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 //		printf("%s: gitconfig_excludes=%s\n", __func__, *gitconfig_excludes);
 		if (err)
 			goto wait;
+		real_path = realpath(*gitconfig_excludes, NULL);
+		if (!real_path) {
+			return got_error_from_errno2("realpath",
+			    *gitconfig_excludes);
+		}
+		*gitconfig_excludes = real_path;
 	}
 
 	if (remotes && nremotes) {

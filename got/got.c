@@ -331,11 +331,28 @@ apply_unveil(const char *repo_path, int repo_read_only,
     const char *worktree_path, const char *gitconfig_excludes)
 {
 	const struct got_error *err;
+	char *real_excludes = NULL;
 
 #ifdef PROFILE
 	if (unveil("gmon.out", "rwc") != 0)
 		return got_error_from_errno2("unveil", "gmon.out");
 #endif
+	// FIXME: if i move it one block further, realpath stops working
+	if (gitconfig_excludes) {
+//		printf("%s: gitconfig_excludes=%s\n", __func__, gitconfig_excludes);
+		real_excludes = realpath(gitconfig_excludes, NULL);
+//		printf("%s: real_excludes=%s\n", __func__, real_excludes);
+		if (!real_excludes)
+			return got_error_from_errno2("realpath1",
+			    gitconfig_excludes);
+		if (unveil(real_excludes, "r") != 0) {
+			free(real_excludes);
+			return got_error_from_errno2("unveil",
+			    gitconfig_excludes);
+		}
+		free(real_excludes);
+	}
+
 	if (repo_path && unveil(repo_path, repo_read_only ? "r" : "rwc") != 0)
 		return got_error_from_errno2("unveil", repo_path);
 
@@ -344,9 +361,6 @@ apply_unveil(const char *repo_path, int repo_read_only,
 
 	if (unveil(GOT_TMPDIR_STR, "rwc") != 0)
 		return got_error_from_errno2("unveil", GOT_TMPDIR_STR);
-
-	if (gitconfig_excludes && unveil(gitconfig_excludes, "r") != 0)
-		return got_error_from_errno2("unveil", gitconfig_excludes);
 
 	err = got_privsep_unveil_exec_helpers();
 	if (err != NULL)
