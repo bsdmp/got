@@ -47,7 +47,7 @@
 #define nitems(_a) (sizeof(_a) / sizeof((_a)[0]))
 #endif
 
-#define GITCONFIG_DEBUG 1
+//#define GITCONFIG_DEBUG 1
 #define LOG_MISC	0
 #define LOG_REPORT	1
 #ifdef GITCONFIG_DEBUG

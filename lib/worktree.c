@@ -3814,6 +3814,7 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 	RB_INIT(ignorelist);
 
 	while ((linelen = getline(&line, &linesize, f)) != -1) {
+//		printf("%s; line=%s\n", __func__, line);
 		if (linelen > 0 && line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
 
@@ -3965,6 +3966,9 @@ add_ignores(struct got_pathlist_head *ignores, const char *root_path,
 	int fd = -1;
 	FILE *ignoresfile = NULL;
 
+	if (ignores_filename == NULL)
+		return NULL;
+
 	if (asprintf(&ignorespath, "%s/%s%s%s", root_path, path,
 	    path[0] ? "/" : "", ignores_filename) == -1)
 		return got_error_from_errno("asprintf");
@@ -4060,8 +4064,8 @@ status_traverse(void *arg, const char *path, int dirfd)
 	if (err)
 		return err;
 
-//	err = add_ignores(&(*a->ignores)[IGNORE_GLOBAL], a->worktree->root_path,
-//	    path, dirfd, got_repo_get_excludes(a->repo));
+	err = add_ignores(&(*a->ignores)[IGNORE_GLOBAL], a->worktree->root_path,
+	    path, dirfd, got_repo_get_excludes(a->repo));
 
 	return err;
 }
@@ -4114,10 +4118,11 @@ add_ignores_from_parent_paths(struct got_repository *repo,
 	if (err)
 		return err;
 
-//	err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, "", -1,
-//	    got_repo_get_excludes(repo));
-//	if (err)
-//		return err;
+	printf("%s: got_repo_get_excludes(repo)=%s\n", __func__, got_repo_get_excludes(repo));
+	err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, "", -1,
+	    got_repo_get_excludes(repo));
+	if (err)
+		return err;
 
 	err = got_path_dirname(&parent_path, path);
 	if (err) {
@@ -4134,10 +4139,10 @@ add_ignores_from_parent_paths(struct got_repository *repo,
 		    ".gitignore");
 		if (err)
 			break;
-//		err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, parent_path, -1,
-//		    got_repo_get_excludes(repo));
-//		if (err)
-//			break;
+		err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, parent_path, -1,
+		    got_repo_get_excludes(repo));
+		if (err)
+			break;
 		err = got_path_dirname(&next_parent_path, parent_path);
 		if (err) {
 			if (err->code == GOT_ERR_BAD_PATH)

@@ -77,7 +77,8 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 		*nremotes = 0;
 	if (gitconfig_owner)
 		*gitconfig_owner = NULL;
-	*gitconfig_excludes = NULL;
+	if (gitconfig_excludes)
+		*gitconfig_excludes = NULL;
 
 	fd = open(gitconfig_path, O_RDONLY | O_CLOEXEC);
 	if (fd == -1) {
@@ -174,14 +175,16 @@ got_repo_read_gitconfig(int *gitconfig_repository_format_version,
 	if (err)
 		goto wait;
 
-	err = got_privsep_send_gitconfig_excludes_req(&ibuf);
-	if (err)
-		goto wait;
+	if (gitconfig_excludes) {
+		err = got_privsep_send_gitconfig_excludes_req(&ibuf);
+		if (err)
+			goto wait;
 
-	err = got_privsep_recv_gitconfig_str(gitconfig_excludes, &ibuf);
-//	printf("%s: gitconfig_excludes=%s\n", __func__, gitconfig_excludes);
-	if (err)
-		goto wait;
+		err = got_privsep_recv_gitconfig_str(gitconfig_excludes, &ibuf);
+		printf("%s: gitconfig_excludes=%s\n", __func__, *gitconfig_excludes);
+		if (err)
+			goto wait;
+	}
 
 	if (remotes && nremotes) {
 		err = got_privsep_send_gitconfig_remotes_req(&ibuf);

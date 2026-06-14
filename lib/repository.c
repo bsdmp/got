@@ -653,7 +653,7 @@ read_gitconfig(struct got_repository *repo, const char *global_gitconfig_path)
 	    &repo->gitconfig_remotes, &repo->ngitconfig_remotes,
 	    &repo->gitconfig_owner, &repo->extnames, &repo->extvals,
 	    &repo->nextensions, repo_gitconfig_path,
-	    &repo->global_gitconfig_excludesfile);
+	    NULL);
 	if (err)
 		goto done;
 
