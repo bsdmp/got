@@ -6749,7 +6749,7 @@ cmd_status(int argc, char *argv[])
 	error = get_gitconfig_path(&gitconfig_path);
 	if (error)
 		goto done;
-	printf("%s: gitconfig_path=%s\n", __func__, gitconfig_path);
+//	printf("%s: gitconfig_path=%s\n", __func__, gitconfig_path);
 	error = got_repo_open(&repo, got_worktree_get_repo_path(worktree),
 	    gitconfig_path, pack_fds);
 	if (error != NULL)

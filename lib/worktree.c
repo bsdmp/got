@@ -4118,7 +4118,7 @@ add_ignores_from_parent_paths(struct got_repository *repo,
 	if (err)
 		return err;
 
-	printf("%s: got_repo_get_excludes(repo)=%s\n", __func__, got_repo_get_excludes(repo));
+//	printf("%s: got_repo_get_excludes(repo)=%s\n", __func__, got_repo_get_excludes(repo));
 	err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, "", -1,
 	    got_repo_get_excludes(repo));
 	if (err)
