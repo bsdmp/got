@@ -4139,6 +4139,8 @@ add_ignores_from_parent_paths(struct got_repository *repo,
 		    ".gitignore");
 		if (err)
 			break;
+		// XXX misha: do we really need it here, in loop? understand
+		// what this loop is for.
 		err = add_ignores(&ignores[IGNORE_GLOBAL], root_path, parent_path, -1,
 		    got_repo_get_excludes(repo));
 		if (err)
@@ -4253,6 +4255,8 @@ worktree_status(struct got_worktree *worktree, const char *path,
 
 	ie = got_fileindex_entry_get(fileindex, path, strlen(path));
 	if (ie) {
+		// XXX misha: we pass empty ignores here, is it really what we
+		// want?
 		err = report_single_file_status(path, ondisk_path,
 		    fileindex, status_cb, status_arg, repo,
 		    report_unchanged, &ignores, no_ignores);
