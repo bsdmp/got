@@ -3952,7 +3952,7 @@ match_ignores(struct got_pathlist_head (*ignores_list)[IGNORES_MAX],
 			}
 			pe = RB_PREV(got_pathlist_head, ignores, pe);
 		}
-}
+	}
 
 	return 0;
 }
