@@ -3666,7 +3666,7 @@ enum got_ignore_files {
 	IGNORE_CVS,
 	IGNORE_GIT,
 	IGNORE_GLOBAL,
-	IGNORES_MAX,
+	IGNORE_MAX,
 };
 
 struct diff_dir_cb_arg {
@@ -3681,7 +3681,7 @@ struct diff_dir_cb_arg {
     void *cancel_arg;
     /* A pathlist containing per-directory pathlists of ignore patterns. */
 //    struct got_pathlist_head ignores[IGNORES_MAX];
-    struct got_pathlist_head (*ignores)[IGNORES_MAX];
+    struct got_pathlist_head (*ignores)[IGNORE_MAX];
     int report_unchanged;
     int no_ignores;
 };
@@ -3891,11 +3891,11 @@ match_path(const char *pattern, size_t pattern_len, const char *path,
 }
 
 static int
-match_ignores(struct got_pathlist_head (*ignores_list)[IGNORES_MAX],
+match_ignores(struct got_pathlist_head (*ignores_list)[IGNORE_MAX],
     const char *path)
 {
 	int i;
-	for (i = 0; i < IGNORES_MAX; i++) {
+	for (i = 0; i < IGNORE_MAX; i++) {
 		struct got_pathlist_entry *pe;
 		struct got_pathlist_head *ignores = &(*ignores_list)[i];
 
@@ -4074,7 +4074,7 @@ static const struct got_error *
 report_single_file_status(const char *path, const char *ondisk_path,
     struct got_fileindex *fileindex, got_worktree_status_cb status_cb,
     void *status_arg, struct got_repository *repo, int report_unchanged,
-    struct got_pathlist_head (*ignores)[IGNORES_MAX], int no_ignores)
+    struct got_pathlist_head (*ignores)[IGNORE_MAX], int no_ignores)
 {
 	struct got_fileindex_entry *ie;
 	struct stat sb;
@@ -4193,7 +4193,7 @@ static const struct got_error *
 report_children(struct got_pathlist_head *children,
     struct got_worktree *worktree, struct got_fileindex *fileindex,
     struct got_repository *repo, int is_root_dir, int report_unchanged,
-    struct got_pathlist_head (*ignores)[IGNORES_MAX], int no_ignores,
+    struct got_pathlist_head (*ignores)[IGNORE_MAX], int no_ignores,
     got_worktree_status_cb status_cb, void *status_arg,
     got_cancel_cb cancel_cb, void *cancel_arg)
 {
@@ -4241,7 +4241,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 	struct got_fileindex_diff_dir_cb fdiff_cb;
 	struct diff_dir_cb_arg arg;
 	char *ondisk_path = NULL;
-	struct got_pathlist_head ignores[IGNORES_MAX], missing_children;
+	struct got_pathlist_head ignores[IGNORE_MAX], missing_children;
 	struct got_fileindex_entry *ie;
 
 	RB_INIT(&ignores[IGNORE_CVS]);
