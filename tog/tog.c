@@ -212,7 +212,7 @@ tog_free_refs(void)
 
 static const struct got_error *
 add_color(struct tog_colors *colors, const char *pattern,
-    int idx, short color)
+    int idx, short color, short bg)
 {
 	const struct got_error *err = NULL;
 	struct tog_color *tc;
@@ -221,7 +221,7 @@ add_color(struct tog_colors *colors, const char *pattern,
 	if (idx < 1 || idx > COLOR_PAIRS - 1)
 		return NULL;
 
-	init_pair(idx, color, -1);
+	init_pair(idx, color, bg);
 
 	tc = calloc(1, sizeof(*tc));
 	if (tc == NULL)
@@ -303,18 +303,20 @@ default_color_value(const char *envvar)
 		return COLOR_YELLOW;
 	if (strcmp(envvar, "TOG_COLOR_REFS_BACKUP") == 0)
 		return COLOR_CYAN;
+	if (strcmp(envvar, "TOG_COLOR_SEARCH_WRAP") == 0)
+		return COLOR_RED;
 
 	return -1;
 }
 
+/*
+ * Map a color name, as accepted in TOG_COLOR_* environment variables,
+ * to a curses color constant. Returns -2 if 'val' is not a recognized
+ * color name.
+ */
 static int
-get_color_value(const char *envvar)
+color_by_name(const char *val)
 {
-	const char *val = getenv(envvar);
-
-	if (val == NULL)
-		return default_color_value(envvar);
-
 	if (strcasecmp(val, "black") == 0)
 		return COLOR_BLACK;
 	if (strcasecmp(val, "red") == 0)
@@ -334,7 +336,83 @@ get_color_value(const char *envvar)
 	if (strcasecmp(val, "default") == 0)
 		return -1;
 
-	return default_color_value(envvar);
+	return -2;
+}
+
+/*
+ * A TOG_COLOR_* value may be either just a foreground color, e.g.
+ * "red", or a foreground and a background color separated by a
+ * semicolon, e.g. "red;blue". Split 'val' into its foreground part
+ * (copied into 'fgbuf', which must be able to hold the longest color
+ * name plus a NUL) and, if present, a pointer to its background part;
+ * '*bg' is set to NULL if 'val' contains no semicolon.
+ */
+static void
+split_color_spec(const char *val, char *fgbuf, size_t fgbufsize,
+    const char **bg)
+{
+	const char *semi = strchr(val, ';');
+	size_t fglen;
+
+	if (semi == NULL) {
+		strlcpy(fgbuf, val, fgbufsize);
+		*bg = NULL;
+		return;
+	}
+
+	fglen = semi - val;
+	if (fglen >= fgbufsize)
+		fglen = fgbufsize - 1;
+	memcpy(fgbuf, val, fglen);
+	fgbuf[fglen] = '\0';
+	*bg = semi + 1;
+}
+
+static int
+get_color_value(const char *envvar)
+{
+	const char *val = getenv(envvar);
+	char fgbuf[16];
+	const char *bg;
+	int color;
+
+	if (val == NULL)
+		return default_color_value(envvar);
+
+	split_color_spec(val, fgbuf, sizeof(fgbuf), &bg);
+
+	color = color_by_name(fgbuf);
+	if (color == -2)
+		return default_color_value(envvar);
+	return color;
+}
+
+/*
+ * Background color counterpart of get_color_value(), parsed out of
+ * the same TOG_COLOR_* variable's value rather than a separate
+ * variable. Background colors have no per-variable default; if
+ * 'envvar' is unset or specifies no background color, the terminal's
+ * default background is used.
+ */
+static int
+get_bg_color_value(const char *envvar)
+{
+	const char *val = getenv(envvar);
+	char fgbuf[16];
+	const char *bg;
+	int color;
+
+	if (val == NULL)
+		return -1;
+
+	split_color_spec(val, fgbuf, sizeof(fgbuf), &bg);
+	if (bg == NULL)
+		return -1;
+
+	color = color_by_name(bg);
+	if (color == -2)
+		return -1;
+	return color;
 }
 
 struct diff_worktree_arg {
@@ -473,6 +551,7 @@ struct tog_log_view_state {
 #define TOG_COLOR_REFS_TAGS		13
 #define TOG_COLOR_REFS_REMOTES		14
 #define TOG_COLOR_REFS_BACKUP		15
+#define TOG_COLOR_SEARCH_WRAP		16
 
 struct tog_blame_cb_args {
 	struct tog_blame_line *lines; /* one per line */
@@ -766,6 +845,10 @@ struct tog_view {
 #define TOG_SEARCH_HAVE_MORE	1
 #define TOG_SEARCH_NO_MORE	2
 #define TOG_SEARCH_HAVE_NONE	3
+#define TOG_MSG_SEARCH_WRAP_FORWARD \
+	"search hit BOTTOM, continuing at TOP"
+#define TOG_MSG_SEARCH_WRAP_BACKWARD \
+	"search hit TOP, continuing at BOTTOM"
 	regex_t regex;
 	regmatch_t regmatch;
 	const char *action;
@@ -1668,6 +1751,7 @@ static void
 action_report(struct tog_view *view)
 {
 	struct tog_view *v = view;
+	int color = 0;
 
 	if (view_is_hsplit_top(view))
 		v = view->child;
@@ -1676,7 +1760,19 @@ action_report(struct tog_view *view)
 
 	wmove(v->window, v->nlines - 1, 0);
 	wclrtoeol(v->window);
+
+	if (getenv("TOG_COLORS") != NULL && view->action != NULL &&
+	    (strcmp(view->action, TOG_MSG_SEARCH_WRAP_FORWARD) == 0 ||
+	    strcmp(view->action, TOG_MSG_SEARCH_WRAP_BACKWARD) == 0)) {
+		wattr_on(v->window, COLOR_PAIR(TOG_COLOR_SEARCH_WRAP), NULL);
+		color = 1;
+	}
+
 	wprintw(v->window, ":%s", view->action);
+
+	if (color)
+		wattr_off(v->window, COLOR_PAIR(TOG_COLOR_SEARCH_WRAP), NULL);
+
 	wrefresh(v->window);
 
 	/*
@@ -4559,15 +4655,18 @@ open_log_view(struct tog_view *view, struct got_object_id *start_id,
 	STAILQ_INIT(&s->colors);
 	if (has_colors() && getenv("TOG_COLORS") != NULL) {
 		err = add_color(&s->colors, "^$", TOG_COLOR_COMMIT,
-		    get_color_value("TOG_COLOR_COMMIT"));
+		    get_color_value("TOG_COLOR_COMMIT"),
+		    get_bg_color_value("TOG_COLOR_COMMIT"));
 		if (err)
 			goto done;
 		err = add_color(&s->colors, "^$", TOG_COLOR_AUTHOR,
-		    get_color_value("TOG_COLOR_AUTHOR"));
+		    get_color_value("TOG_COLOR_AUTHOR"),
+		    get_bg_color_value("TOG_COLOR_AUTHOR"));
 		if (err)
 			goto done;
 		err = add_color(&s->colors, "^$", TOG_COLOR_DATE,
-		    get_color_value("TOG_COLOR_DATE"));
+		    get_color_value("TOG_COLOR_DATE"),
+		    get_bg_color_value("TOG_COLOR_DATE"));
 		if (err)
 			goto done;
 	}
@@ -5244,6 +5343,9 @@ init_curses(void)
 	if (getenv("TOG_COLORS") != NULL) {
 		start_color();
 		use_default_colors();
+		init_pair(TOG_COLOR_SEARCH_WRAP,
+		    get_color_value("TOG_COLOR_SEARCH_WRAP"),
+		    get_bg_color_value("TOG_COLOR_SEARCH_WRAP"));
 	}
 
 	return;
@@ -6819,10 +6921,13 @@ search_next_view_match(struct tog_view *view)
 				break;
 			}
 
-			if (view->searching == TOG_SEARCH_FORWARD)
+			if (view->searching == TOG_SEARCH_FORWARD) {
 				lineno = 1;
-			else
+				view->action = TOG_MSG_SEARCH_WRAP_FORWARD;
+			} else {
 				lineno = nlines;
+				view->action = TOG_MSG_SEARCH_WRAP_BACKWARD;
+			}
 		}
 
 		offset = view->type == TOG_VIEW_DIFF ?
@@ -6986,31 +7091,40 @@ open_diff_view(struct tog_view *view, struct got_object_id *id1,
 		int rc;
 
 		rc = init_pair(GOT_DIFF_LINE_MINUS,
-		    get_color_value("TOG_COLOR_DIFF_MINUS"), -1);
+		    get_color_value("TOG_COLOR_DIFF_MINUS"),
+		    get_bg_color_value("TOG_COLOR_DIFF_MINUS"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_PLUS,
-			    get_color_value("TOG_COLOR_DIFF_PLUS"), -1);
+			    get_color_value("TOG_COLOR_DIFF_PLUS"),
+			    get_bg_color_value("TOG_COLOR_DIFF_PLUS"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_HUNK,
-			    get_color_value("TOG_COLOR_DIFF_CHUNK_HEADER"), -1);
+			    get_color_value("TOG_COLOR_DIFF_CHUNK_HEADER"),
+			    get_bg_color_value("TOG_COLOR_DIFF_CHUNK_HEADER"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_META,
-			    get_color_value("TOG_COLOR_DIFF_META"), -1);
+			    get_color_value("TOG_COLOR_DIFF_META"),
+			    get_bg_color_value("TOG_COLOR_DIFF_META"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_CHANGES,
-			    get_color_value("TOG_COLOR_DIFF_META"), -1);
+			    get_color_value("TOG_COLOR_DIFF_META"),
+			    get_bg_color_value("TOG_COLOR_DIFF_META"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_BLOB_MIN,
-			    get_color_value("TOG_COLOR_DIFF_META"), -1);
+			    get_color_value("TOG_COLOR_DIFF_META"),
+			    get_bg_color_value("TOG_COLOR_DIFF_META"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_BLOB_PLUS,
-			    get_color_value("TOG_COLOR_DIFF_META"), -1);
+			    get_color_value("TOG_COLOR_DIFF_META"),
+			    get_bg_color_value("TOG_COLOR_DIFF_META"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_AUTHOR,
-			    get_color_value("TOG_COLOR_AUTHOR"), -1);
+			    get_color_value("TOG_COLOR_AUTHOR"),
+			    get_bg_color_value("TOG_COLOR_AUTHOR"));
 		if (rc != ERR)
 			rc = init_pair(GOT_DIFF_LINE_DATE,
-			    get_color_value("TOG_COLOR_DATE"), -1);
+			    get_color_value("TOG_COLOR_DATE"),
+			    get_bg_color_value("TOG_COLOR_DATE"));
 		if (rc == ERR) {
 			err = got_error(GOT_ERR_RANGE);
 			goto done;
@@ -8461,7 +8575,8 @@ open_blame_view(struct tog_view *view, char *path,
 	STAILQ_INIT(&s->colors);
 	if (has_colors() && getenv("TOG_COLORS") != NULL) {
 		err = add_color(&s->colors, "^", TOG_COLOR_COMMIT,
-		    get_color_value("TOG_COLOR_COMMIT"));
+		    get_color_value("TOG_COLOR_COMMIT"),
+		    get_bg_color_value("TOG_COLOR_COMMIT"));
 		if (err)
 			return err;
 	}
@@ -9445,27 +9560,32 @@ open_tree_view(struct tog_view *view, struct got_object_id *commit_id,
 	if (has_colors() && getenv("TOG_COLORS") != NULL) {
 		err = add_color(&s->colors, "\\$$",
 		    TOG_COLOR_TREE_SUBMODULE,
-		    get_color_value("TOG_COLOR_TREE_SUBMODULE"));
+		    get_color_value("TOG_COLOR_TREE_SUBMODULE"),
+		    get_bg_color_value("TOG_COLOR_TREE_SUBMODULE"));
 		if (err)
 			goto done;
 		err = add_color(&s->colors, "@$", TOG_COLOR_TREE_SYMLINK,
-		    get_color_value("TOG_COLOR_TREE_SYMLINK"));
+		    get_color_value("TOG_COLOR_TREE_SYMLINK"),
+		    get_bg_color_value("TOG_COLOR_TREE_SYMLINK"));
 		if (err)
 			goto done;
 		err = add_color(&s->colors, "/$",
 		    TOG_COLOR_TREE_DIRECTORY,
-		    get_color_value("TOG_COLOR_TREE_DIRECTORY"));
+		    get_color_value("TOG_COLOR_TREE_DIRECTORY"),
+		    get_bg_color_value("TOG_COLOR_TREE_DIRECTORY"));
 		if (err)
 			goto done;
 
 		err = add_color(&s->colors, "\\*$",
 		    TOG_COLOR_TREE_EXECUTABLE,
-		    get_color_value("TOG_COLOR_TREE_EXECUTABLE"));
+		    get_color_value("TOG_COLOR_TREE_EXECUTABLE"),
+		    get_bg_color_value("TOG_COLOR_TREE_EXECUTABLE"));
 		if (err)
 			goto done;
 
 		err = add_color(&s->colors, "^$", TOG_COLOR_COMMIT,
-		    get_color_value("TOG_COLOR_COMMIT"));
+		    get_color_value("TOG_COLOR_COMMIT"),
+		    get_bg_color_value("TOG_COLOR_COMMIT"));
 		if (err)
 			goto done;
 	}
@@ -10115,25 +10235,29 @@ open_ref_view(struct tog_view *view, struct got_repository *repo)
 	if (has_colors() && getenv("TOG_COLORS") != NULL) {
 		err = add_color(&s->colors, "^refs/heads/",
 		    TOG_COLOR_REFS_HEADS,
-		    get_color_value("TOG_COLOR_REFS_HEADS"));
+		    get_color_value("TOG_COLOR_REFS_HEADS"),
+		    get_bg_color_value("TOG_COLOR_REFS_HEADS"));
 		if (err)
 			goto done;
 
 		err = add_color(&s->colors, "^refs/tags/",
 		    TOG_COLOR_REFS_TAGS,
-		    get_color_value("TOG_COLOR_REFS_TAGS"));
+		    get_color_value("TOG_COLOR_REFS_TAGS"),
+		    get_bg_color_value("TOG_COLOR_REFS_TAGS"));
 		if (err)
 			goto done;
 
 		err = add_color(&s->colors, "^refs/remotes/",
 		    TOG_COLOR_REFS_REMOTES,
-		    get_color_value("TOG_COLOR_REFS_REMOTES"));
+		    get_color_value("TOG_COLOR_REFS_REMOTES"),
+		    get_bg_color_value("TOG_COLOR_REFS_REMOTES"));
 		if (err)
 			goto done;
 
 		err = add_color(&s->colors, "^refs/got/backup/",
 		    TOG_COLOR_REFS_BACKUP,
-		    get_color_value("TOG_COLOR_REFS_BACKUP"));
+		    get_color_value("TOG_COLOR_REFS_BACKUP"),
+		    get_bg_color_value("TOG_COLOR_REFS_BACKUP"));
 		if (err)
 			goto done;
 	}

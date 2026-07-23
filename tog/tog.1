@@ -896,6 +896,13 @@ The colors available in color schemes are
 and
 .Dq default
 which maps to the terminal's default foreground color.
+Each variable listed below also accepts a background color, by
+appending a semicolon and a second color name from the same list,
+e.g.\&
+.Dq red;blue
+for red text on a blue background.
+If no background color is given this way, the terminal's default
+background color is used.
 .It Ev TOG_COLOR_AUTHOR
 The color used to mark up author information.
 If not set, the default value
@@ -958,6 +965,19 @@ The color used to mark up references in the
 namespace.
 If not set, the default value
 .Dq magenta
+is used.
+.It Ev TOG_COLOR_SEARCH_WRAP
+The color used to mark up the
+.Dq search hit BOTTOM, continuing at TOP
+and
+.Dq search hit TOP, continuing at BOTTOM
+messages, shown when the
+.Cm n
+or
+.Cm N
+key wraps a search around to the other end of the view.
+If not set, the default value
+.Dq red
 is used.
 .It Ev TOG_COLOR_TREE_DIRECTORY
 The color used to mark up directory tree entries.
