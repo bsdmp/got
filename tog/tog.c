@@ -5479,6 +5479,30 @@ match_color(struct tog_colors *colors, const char *line)
 }
 
 /*
+ * Check whether 'line' contains a match for the search pattern, so
+ * that every matching line on screen can be highlighted rather than
+ * only the line currently selected by the search cursor. Matching is
+ * done against the tab-expanded line since add_matched_line() looks
+ * for matches the same way.
+ */
+static const struct got_error *
+line_matches_search(int *matched, const char *line, regex_t *regex)
+{
+	const struct got_error *err;
+	char *exstr;
+
+	*matched = 0;
+
+	err = expand_tab(&exstr, line);
+	if (err)
+		return err;
+
+	*matched = match_line(exstr, regex, 0, NULL);
+	free(exstr);
+	return NULL;
+}
+
+/*
  * Draw one segment of a line which either precedes/follows a regex
  * match (highlight == 0) or is a regex match itself (highlight == 1).
  * '*consumed' tracks the display width of the line up to the start of
@@ -5672,7 +5696,6 @@ static const struct got_error *
 draw_file(struct tog_view *view, const char *header)
 {
 	struct tog_diff_view_state *s = &view->state.diff;
-	regmatch_t *regmatch = &view->regmatch;
 	const struct got_error *err;
 	int nprinted = 0;
 	char *line;
@@ -5680,6 +5703,7 @@ draw_file(struct tog_view *view, const char *header)
 	ssize_t linelen;
 	wchar_t *wline;
 	int width;
+	int highlight;
 	int max_lines = view->nlines;
 	int nlines = s->nlines;
 	off_t line_offset;
@@ -5763,8 +5787,16 @@ draw_file(struct tog_view *view, const char *header)
 			attr |= COLOR_PAIR(linetype);
 		if (attr)
 			wattron(view->window, attr);
-		if (s->first_displayed_line + nprinted == s->matched_line &&
-		    regmatch->rm_so >= 0 && regmatch->rm_so < regmatch->rm_eo) {
+		highlight = 0;
+		if (view->search_started) {
+			err = line_matches_search(&highlight, line,
+			    &view->regex);
+			if (err) {
+				free(line);
+				return err;
+			}
+		}
+		if (highlight) {
 			err = add_matched_line(&width, line, view->ncols, 0,
 			    view->window, view->x, &view->regex);
 			if (err) {
@@ -7870,7 +7902,6 @@ draw_blame(struct tog_view *view)
 {
 	struct tog_blame_view_state *s = &view->state.blame;
 	struct tog_blame *blame = &s->blame;
-	regmatch_t *regmatch = &view->regmatch;
 	const struct got_error *err;
 	int lineno = 0, nprinted = 0;
 	char *line = NULL;
@@ -7878,6 +7909,7 @@ draw_blame(struct tog_view *view)
 	ssize_t linelen;
 	wchar_t *wline;
 	int width;
+	int highlight;
 	struct tog_blame_line *blame_line;
 	struct got_object_id *prev_id = NULL;
 	char *id_str;
@@ -8014,11 +8046,19 @@ draw_blame(struct tog_view *view)
 			wstandend(view->window);
 		waddstr(view->window, " ");
 
+		highlight = 0;
+		if (view->search_started) {
+			err = line_matches_search(&highlight, line,
+			    &view->regex);
+			if (err) {
+				free(line);
+				return err;
+			}
+		}
+
 		if (view->ncols <= 9) {
 			width = 9;
-		} else if (s->first_displayed_line + nprinted ==
-		    s->matched_line &&
-		    regmatch->rm_so >= 0 && regmatch->rm_so < regmatch->rm_eo) {
+		} else if (highlight) {
 			err = add_matched_line(&width, line, view->ncols - 9, 9,
 			    view->window, view->x, &view->regex);
 			if (err) {
@@ -11015,12 +11055,12 @@ show_help_view(struct tog_view *view)
 {
 	struct tog_help_view_state	*s = &view->state.help;
 	const struct got_error		*err;
-	regmatch_t			*regmatch = &view->regmatch;
 	wchar_t				*wline;
 	char				*line;
 	ssize_t				 linelen;
 	size_t				 linesz = 0;
 	int				 width, nprinted = 0, rc = 0;
+	int				 highlight;
 	int				 eos = view->nlines;
 
 	if (view_is_hsplit_top(view))
@@ -11077,8 +11117,16 @@ show_help_view(struct tog_view *view)
 
 		if (attr)
 			wattron(view->window, attr);
-		if (s->first_displayed_line + nprinted == s->matched_line &&
-		    regmatch->rm_so >= 0 && regmatch->rm_so < regmatch->rm_eo) {
+		highlight = 0;
+		if (view->search_started) {
+			err = line_matches_search(&highlight, line,
+			    &view->regex);
+			if (err) {
+				free(line);
+				return err;
+			}
+		}
+		if (highlight) {
 			err = add_matched_line(&width, line, view->ncols - 1, 0,
 			    view->window, view->x, &view->regex);
 			if (err) {
