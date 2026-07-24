@@ -304,12 +304,25 @@ _got_patch() {
 		'1::patch file:_files'
 }
 
+_got_revert_paths() {
+	local paths
+
+	# we grep for statuses which we can revert and print <path>:<status> for completion
+	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{status = substr($0, 1, 1); path = substr($0, 4); print path ":" status}')
+	reply=(${(f)paths})
+}
+
+_got_revert_files() {
+	_got_revert_paths
+	_describe 'file' reply
+}
+
 _got_revert() {
 	_arguments : \
 		'-F[read y/n/q responses from the specified file]:response script:_files' \
 		'-p[interactively select or reject changes to revert]' \
 		'-R[permit recursion into directories]' \
-		'*:path:_files'
+		'*:path:_got_revert_files'
 }
 
 _got_commit() {
