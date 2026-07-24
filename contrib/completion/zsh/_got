@@ -6,7 +6,7 @@
 # anyway, but if the user has typed 'got update -<tab>' we will catch that and
 # help them too.
 #
-# To use this file, copy it to ~/.zsh/completion/ and add to .zshrc:
+# To use this file, copy it to ~/.zsh/completions/ and add to .zshrc:
 # fpath=(~/.zsh/completions/ $fpath)
 # autoload -U compinit && compinit
 #
