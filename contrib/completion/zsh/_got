@@ -1,5 +1,10 @@
 #compdef got
 
+# TODO: this file can be improved with options excluding logic, for example
+# (-t)-T[send all tags from the local repository]' in _got_send can be used to
+# make zsh remove '-t' from completion if -T is used, but lets keep it simple
+# for now
+
 _got_branches() {
 	local branches
 
