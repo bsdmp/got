@@ -278,11 +278,24 @@ _got_tag() {
 		'1::tag name:_got_tag_name'
 }
 
+_got_add_paths() {
+	local paths
+
+	# use substr because path can contain spaces
+	paths=$(got status 2>/dev/null | grep '^?' | awk '{print substr($0, 4)}')
+	reply=(${(f)paths})
+}
+
+_got_add_files() {
+	_got_add_paths
+	compadd -a reply
+}
+
 _got_add() {
 	_arguments : \
 		'-I[add files even if they match an ignore pattern]' \
 		'-R[permit recursion into directories]' \
-		'*:path:_files'
+		'*:path:_got_add_files'
 }
 
 _got_remove() {
@@ -308,6 +321,7 @@ _got_revert_paths() {
 	local paths
 
 	# we grep for statuses which we can revert and print <path>:<status> for completion
+	# use substr because path can contain spaces
 	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{status = substr($0, 1, 1); path = substr($0, 4); print path ":" status}')
 	reply=(${(f)paths})
 }
