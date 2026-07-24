@@ -3,9 +3,10 @@
 # A minimal zsh completion script for got(1).
 #
 # This is a starting point: right now it only knows about the
-# 'update' command and its '-c' option. Additional commands and
-# options can be added the same way: add a branch to the case
-# statement in _got() below, and a matching _got_<command> function.
+# 'update' command (and its 'up' alias) and its '-c' option.
+# Additional commands and options can be added the same way: add a
+# branch to the case statement in _got() below, and a matching
+# _got_<command> function.
 
 # Candidates accepted by 'got update -c': a branch name, or one of
 # the ':base'/':head' keywords documented in got-worktree(5).
@@ -46,11 +47,13 @@ _got() {
 
 	case $state in
 	command)
-		_values 'got command' update
+		_values 'got command' \
+			'update[update a work tree]' \
+			'up[update a work tree (alias for update)]'
 		;;
 	args)
 		case $line[1] in
-		update)
+		update|up)
 			_got_update
 			;;
 		esac
