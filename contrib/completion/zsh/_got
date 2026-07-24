@@ -3,10 +3,10 @@
 # A minimal zsh completion script for got(1).
 #
 # This is a starting point: right now it only knows about the
-# 'update' ('up'), 'fetch' ('fe'), and 'rebase' ('rb') commands, plus
-# a few of their options. Additional commands and options can be
-# added the same way: add a branch to the case statement in _got()
-# below, and a matching _got_<command> function.
+# 'update' ('up'), 'fetch' ('fe'), 'rebase' ('rb'), and 'status'
+# ('st') commands, plus a few of their options. Additional commands
+# and options can be added the same way: add a branch to the case
+# statement in _got() below, and a matching _got_<command> function.
 
 # Sets $reply to the names of local branches, by parsing 'got branch
 # -l' output, e.g. "* main: 1234567890abcdef..." or "  foo: abcdef...".
@@ -143,6 +143,14 @@ _got_rebase() {
 		'1::branch:_got_branch_name'
 }
 
+_got_status() {
+	_arguments \
+		'-I[show unversioned files even if they match an ignore pattern]' \
+		'(-s)-S[suppress files matching the given status codes]:status codes:' \
+		'(-S)-s[only show files matching the given status codes]:status codes:' \
+		'*:path:_files'
+}
+
 _got() {
 	local line state
 
@@ -152,18 +160,17 @@ _got() {
 
 	case $state in
 	command)
-		# 'update' and 'fetch' are omitted here, not just their
-		# aliases: each shares a prefix with its own alias ('up',
-		# 'fe'), so offering both means 'got up<Tab>' can't
-		# complete on its own and needs a second <Tab> to list
-		# them. Full names are still accepted if typed out, see
-		# the case below. 'rebase'/'rb' don't share a prefix, so
-		# both are offered.
+		# Only aliases are offered here, not full command names:
+		# some full names share a prefix with their own alias
+		# (e.g. 'up'/'update', 'fe'/'fetch'), which would mean
+		# 'got up<Tab>' can't complete on its own and needs a
+		# second <Tab> to list them. Full names are still accepted
+		# if typed out, see the case below.
 		_values 'got command' \
 			'up[update a work tree (alias for update)]' \
 			'fe[fetch new changes from a remote repository (alias for fetch)]' \
-			'rebase[rebase commits onto the tip of the current branch]' \
-			'rb[rebase commits onto the tip of the current branch (alias for rebase)]'
+			'rb[rebase commits onto the tip of the current branch (alias for rebase)]' \
+			'st[show the modification status of files in a work tree (alias for status)]'
 		;;
 	args)
 		case $line[1] in
@@ -175,6 +182,9 @@ _got() {
 			;;
 		rebase|rb)
 			_got_rebase
+			;;
+		status|st)
+			_got_status
 			;;
 		esac
 		;;
