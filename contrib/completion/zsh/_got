@@ -47,8 +47,12 @@ _got() {
 
 	case $state in
 	command)
+		# Only 'up' is offered here, not 'update': the two share a
+		# prefix, so offering both means 'got up<Tab>' can't
+		# complete on its own and needs a second <Tab> to list
+		# them. 'update' is still accepted if typed out in full,
+		# see the case below.
 		_values 'got command' \
-			'update[update a work tree]' \
 			'up[update a work tree (alias for update)]'
 		;;
 	args)
