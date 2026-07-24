@@ -3,16 +3,46 @@
 # A minimal zsh completion script for got(1).
 #
 # This is a starting point: right now it only knows about the
-# 'update' command (and its 'up' alias) and its '-c' option.
-# Additional commands and options can be added the same way: add a
-# branch to the case statement in _got() below, and a matching
-# _got_<command> function.
+# 'update' command (and its 'up' alias) and the 'fetch' command (and
+# its 'fe' alias), plus a few of their options. Additional commands
+# and options can be added the same way: add a branch to the case
+# statement in _got() below, and a matching _got_<command> function.
+
+# Sets $reply to the names of local branches, by parsing 'got branch
+# -l' output, e.g. "* main: 1234567890abcdef..." or "  foo: abcdef...".
+_got_branches() {
+	local line name
+
+	reply=()
+	while IFS= read -r line; do
+		name=${line:2}
+		name=${name%%:*}
+		[[ -n $name ]] && reply+=("$name")
+	done < <(got branch -l 2>/dev/null)
+}
+
+# Candidates for options that take a local branch name, such as
+# 'got update -b' or 'got fetch -b'. Note that 'got fetch -b' actually
+# expects a branch name on the remote repository, which may differ
+# from the local branch list used here; this is an approximation
+# until remote branches can be queried directly.
+_got_branch_name() {
+	local -a candidates
+	local name
+
+	_got_branches
+	for name in $reply; do
+		candidates+=("${name}:branch")
+	done
+
+	_describe 'branch' candidates
+}
 
 # Candidates accepted by 'got update -c': a branch name, or one of
 # the ':base'/':head' keywords documented in got-worktree(5).
 _got_commit_or_keyword() {
 	local -a candidates
-	local line name
+	local name
 
 	# The leading ':' must be escaped since _describe uses ':' as
 	# the separator between a candidate word and its description.
@@ -21,21 +51,24 @@ _got_commit_or_keyword() {
 		'\:head:branch head commit'
 	)
 
-	# 'got branch -l' prints one line per branch, formatted as
-	# "got.c: printf("%c %s: %s\n", marker, refname, refstr)",
-	# e.g. "* main: 1234567890abcdef..." or "  foo: abcdef123456...".
-	while IFS= read -r line; do
-		name=${line:2}
-		name=${name%%:*}
-		[[ -n $name ]] && candidates+=("${name}:branch")
-	done < <(got branch -l 2>/dev/null)
+	_got_branches
+	for name in $reply; do
+		candidates+=("${name}:branch")
+	done
 
 	_describe 'commit' candidates
 }
 
 _got_update() {
 	_arguments \
+		'-b[switch the work tree to the specified branch]:branch:_got_branch_name' \
 		'-c[update the work tree to the specified commit]:commit:_got_commit_or_keyword'
+}
+
+_got_fetch() {
+	_arguments \
+		'(-b)-a[fetch all branches from the remote repository]' \
+		'(-a)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name'
 }
 
 _got() {
@@ -47,18 +80,23 @@ _got() {
 
 	case $state in
 	command)
-		# Only 'up' is offered here, not 'update': the two share a
-		# prefix, so offering both means 'got up<Tab>' can't
-		# complete on its own and needs a second <Tab> to list
-		# them. 'update' is still accepted if typed out in full,
-		# see the case below.
+		# Only the aliases are offered here, not the full command
+		# names: an alias and its full name share a prefix (e.g.
+		# 'up'/'update', 'fe'/'fetch'), so offering both means
+		# 'got up<Tab>' can't complete on its own and needs a
+		# second <Tab> to list them. Full names are still accepted
+		# if typed out, see the case below.
 		_values 'got command' \
-			'up[update a work tree (alias for update)]'
+			'up[update a work tree (alias for update)]' \
+			'fe[fetch new changes from a remote repository (alias for fetch)]'
 		;;
 	args)
 		case $line[1] in
 		update|up)
 			_got_update
+			;;
+		fetch|fe)
+			_got_fetch
 			;;
 		esac
 		;;
