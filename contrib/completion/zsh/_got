@@ -62,32 +62,21 @@ _got_remote_name() {
 }
 
 _got_ssh_config_hosts() {
-	local -a candidates tok
-	local line host
+	local hosts
+	local -a candidates
 
 	[[ -r ~/.ssh/config ]] || return
 
-	while IFS= read -r line; do
-		tok=(${(z)line})
-		[[ $tok[1] == (#i)host(|name) ]] || continue
-		for host in $tok[2,-1]; do
-			[[ $host == *[*?]* ]] && continue
-			candidates+=("$host")
-		done
-	done < ~/.ssh/config
-
+	hosts=$(grep -iE '^[[:space:]]*host(name)?[[:space:]]' ~/.ssh/config | awk '{for (i=2;i<=NF;i++) print $i}' | grep -vE '[*?]')
+	candidates=(${(f)hosts})
 	compadd -a candidates
 }
 
 _got_tags() {
-	local line name
+	local tags
 
-	reply=()
-	while IFS= read -r line; do
-		name=${line%%:*}
-		name=${name#refs/tags/}
-		[[ -n $name ]] && reply+=("$name")
-	done < <(got ref -l refs/tags 2>/dev/null)
+	tags=$(got ref -l refs/tags 2>/dev/null | awk '{print $1}' | sed 's#^refs/tags/##; s/:$//')
+	reply=(${(f)tags})
 }
 
 _got_tag_name() {
