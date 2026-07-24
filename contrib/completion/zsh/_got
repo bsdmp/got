@@ -38,10 +38,10 @@ _got_branch_name() {
 
 	_got_branches
 	for name in $reply; do
-		candidates+=("${name}:branch")
+		candidates+=("$name")
 	done
 
-	_describe 'branch' candidates
+	compadd -a candidates
 }
 
 _got_worktree_repository_path() {
@@ -79,10 +79,10 @@ _got_remote_name() {
 
 	_got_remotes
 	for name in $reply; do
-		candidates+=("${name}:remote")
+		candidates+=("$name")
 	done
 
-	_describe 'remote repository' candidates
+	compadd -a candidates
 }
 
 _got_ssh_config_hosts() {
@@ -110,10 +110,10 @@ _got_tag_name() {
 
 	_got_tags
 	for name in $reply; do
-		candidates+=("${name}:tag")
+		candidates+=("$name")
 	done
 
-	_describe 'tag' candidates
+	compadd -a candidates
 }
 
 _got_refs() {
@@ -129,10 +129,10 @@ _got_ref_name() {
 
 	_got_refs
 	for name in $reply; do
-		candidates+=("${name}:reference")
+		candidates+=("$name")
 	done
 
-	_describe 'reference' candidates
+	compadd -a candidates
 }
 
 _got_commit_or_keyword() {
@@ -140,16 +140,16 @@ _got_commit_or_keyword() {
 	local name
 
 	candidates=(
-		'\:base:work tree base commit'
-		'\:head:branch head commit'
+		':base'
+		':head'
 	)
 
 	_got_branches
 	for name in $reply; do
-		candidates+=("${name}:branch")
+		candidates+=("$name")
 	done
 
-	_describe 'commit' candidates
+	compadd -a candidates
 }
 
 _got_status_codes() {
@@ -190,37 +190,37 @@ _got_revert_paths() {
 
 	# only these status codes make sense for 'got rv', same logic for the
 	# code bellow
-	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
+	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{print substr($0, 4)}')
 	reply=(${(f)paths})
 }
 
 _got_revert_files() {
 	_got_revert_paths
-	_describe 'file' reply
+	compadd -a reply
 }
 
 _got_stage_paths() {
 	local paths
 
-	paths=$(got status 2>/dev/null | grep '^[AMD]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
+	paths=$(got status 2>/dev/null | grep '^[AMD]' | awk '{print substr($0, 4)}')
 	reply=(${(f)paths})
 }
 
 _got_stage_files() {
 	_got_stage_paths
-	_describe 'file' reply
+	compadd -a reply
 }
 
 _got_unstage_paths() {
 	local paths
 
-	paths=$(got status 2>/dev/null | grep '^.[AMD]' | awk '{code = substr($0, 2, 1); path = substr($0, 4); print path ":" code}')
+	paths=$(got status 2>/dev/null | grep '^.[AMD]' | awk '{print substr($0, 4)}')
 	reply=(${(f)paths})
 }
 
 _got_unstage_files() {
 	_got_unstage_paths
-	_describe 'file' reply
+	compadd -a reply
 }
 
 _got_init() {
