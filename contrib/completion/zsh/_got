@@ -1,9 +1,24 @@
 #compdef got
 
+# Copyright (c) 2026 Mikhail Pchelin <misha@freebsd.org>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 # Zsh tab completion for got 0.128-current, for 'got <tab>' we complete only
 # aliases, to not mess with 'got up<tab>' which matches both 'up' alias and
 # 'update', probably most people use only aliases in their interactive sessions
-# anyway.
+# anyway, but if the user has typed 'got update -<tab>' we will catch that and
+# help them too.
 
 # TODO: this file can be improved with options excluding logic, for example
 # (-t)-T[send all tags from the local repository]' in _got_send can be used to
@@ -173,6 +188,8 @@ _got_add_files() {
 _got_revert_paths() {
 	local paths
 
+	# only these status codes make sense for 'got rv', same logic for the
+	# code bellow
 	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
 	reply=(${(f)paths})
 }
