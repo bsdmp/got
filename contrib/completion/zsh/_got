@@ -374,9 +374,10 @@ _got_commit() {
 		'*:path:_files'
 }
 
-# (<flags>)[*]flag[description]
+# (<flags>)[*]flag[description]:completion
 # - flags in paranthesises means "remove those if the flag is used"
-# asterisk means the flag can be repeated like -vvv
+# - asterisk means the flag can be repeated like -vvv
+# - completion is the func to call to get list of completions
 _got_fetch() {
 	_arguments -s : \
 		'(-b -l -X)-a[fetch all branches from the remote repository]' \
