@@ -7,16 +7,15 @@
 # help them too.
 #
 # To use this file, copy it to ~/.zsh/completion/ and add to .zshrc:
-# zmodload zsh/complist
-# fpath=(~/.zsh/completions $fpath)
+# fpath=(~/.zsh/completions/ $fpath)
 # autoload -U compinit && compinit
 #
-# To make it gloabally available place it (on OpenBSD) into:
+# To make it globally available place it (on OpenBSD) into:
 # /usr/local/share/zsh/site-functions
 
 # TODO: this file can be improved with options excluding logic, for example
-# (-t)-T[send all tags from the local repository]' in _got_send can be used to
-# make zsh remove '-t' from completion if -T is used, but lets keep it simple
+# '(-t)-T[send all tags from the local repository]' in _got_send can be used to
+# make zsh remove '-t' from completion if -T is used, but let's keep it simple
 # for now
 
 _got_branches() {
@@ -85,7 +84,7 @@ _got_ssh_config_hosts() {
 
 	[[ -r ~/.ssh/config ]] || return
 
-	# awk loop is needed for "Host host1 host2 host3" syntaxis, grep to exclude "Host pattern* pattern?"
+	# awk loop is needed for "Host host1 host2 host3" syntax, grep to exclude "Host pattern* pattern?"
 	hosts=$(grep -iE '^[[:space:]]*host(name)?[[:space:]]' ~/.ssh/config | awk '{for (i=2;i<=NF;i++) print $i}' | grep -vE '[*?]')
 	candidates=(${(f)hosts})
 	compadd -a candidates
@@ -169,7 +168,7 @@ _got_remove_status_codes() {
 _got_add_paths() {
 	local paths
 
-	# use substr because path can contain spaces, same bellow
+	# use substr because path can contain spaces, same below
 	paths=$(got status 2>/dev/null | grep '^?' | awk '{print substr($0, 4)}')
 	reply=(${(f)paths})
 }
@@ -182,8 +181,8 @@ _got_add_files() {
 _got_revert_paths() {
 	local paths
 
-	# only these status codes make sense for 'got rv', same logic for the
-	# code bellow
+	# only these status codes make sense for 'got rv', same technique for
+	# other commands with other codes below
 	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{print substr($0, 4)}')
 	reply=(${(f)paths})
 }
