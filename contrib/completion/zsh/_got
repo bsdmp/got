@@ -3,10 +3,10 @@
 # A minimal zsh completion script for got(1).
 #
 # This is a starting point: right now it only knows about the
-# 'update' command (and its 'up' alias) and the 'fetch' command (and
-# its 'fe' alias), plus a few of their options. Additional commands
-# and options can be added the same way: add a branch to the case
-# statement in _got() below, and a matching _got_<command> function.
+# 'update' ('up'), 'fetch' ('fe'), and 'rebase' ('rb') commands, plus
+# a few of their options. Additional commands and options can be
+# added the same way: add a branch to the case statement in _got()
+# below, and a matching _got_<command> function.
 
 # Sets $reply to the names of local branches, by parsing 'got branch
 # -l' output, e.g. "* main: 1234567890abcdef..." or "  foo: abcdef...".
@@ -125,6 +125,24 @@ _got_fetch() {
 		'1::remote repository:_got_remote_name'
 }
 
+# '-a', '-l', and '-X' are each only valid on their own (or with each
+# other's exclusions applied below); '-c' and '-C' may be combined
+# with each other but not with '-a', '-l', or '-X'. See got-rebase(1)
+# for the full set of option_conflict() checks this mirrors.
+_got_rebase() {
+	# A spec's exclusion list says what *it* disables once *it* is
+	# used, not what disables it - so '-a' and '-c' must each list
+	# ':' (all normal arguments) to rule out the branch positional,
+	# rather than the positional spec listing '-a -c'.
+	_arguments \
+		'(-C -c -l -X :)-a[abort an interrupted rebase operation]' \
+		'(-a -l -X :)-c[continue an interrupted rebase operation]' \
+		'(-a -l -X :)-C[allow files in conflicted status when continuing a rebase (requires -c)]' \
+		'(-a -C -c -X)-l[list past rebase operations]' \
+		'(-a -C -c -l)-X[delete backups of past rebase operations]' \
+		'1::branch:_got_branch_name'
+}
+
 _got() {
 	local line state
 
@@ -134,15 +152,18 @@ _got() {
 
 	case $state in
 	command)
-		# Only the aliases are offered here, not the full command
-		# names: an alias and its full name share a prefix (e.g.
-		# 'up'/'update', 'fe'/'fetch'), so offering both means
-		# 'got up<Tab>' can't complete on its own and needs a
-		# second <Tab> to list them. Full names are still accepted
-		# if typed out, see the case below.
+		# 'update' and 'fetch' are omitted here, not just their
+		# aliases: each shares a prefix with its own alias ('up',
+		# 'fe'), so offering both means 'got up<Tab>' can't
+		# complete on its own and needs a second <Tab> to list
+		# them. Full names are still accepted if typed out, see
+		# the case below. 'rebase'/'rb' don't share a prefix, so
+		# both are offered.
 		_values 'got command' \
 			'up[update a work tree (alias for update)]' \
-			'fe[fetch new changes from a remote repository (alias for fetch)]'
+			'fe[fetch new changes from a remote repository (alias for fetch)]' \
+			'rebase[rebase commits onto the tip of the current branch]' \
+			'rb[rebase commits onto the tip of the current branch (alias for rebase)]'
 		;;
 	args)
 		case $line[1] in
@@ -151,6 +172,9 @@ _got() {
 			;;
 		fetch|fe)
 			_got_fetch
+			;;
+		rebase|rb)
+			_got_rebase
 			;;
 		esac
 		;;
