@@ -5,6 +5,14 @@
 # 'update', probably most people use only aliases in their interactive sessions
 # anyway, but if the user has typed 'got update -<tab>' we will catch that and
 # help them too.
+#
+# To use this file, copy it to ~/.zsh/completion/ and add to .zshrc:
+# zmodload zsh/complist
+# fpath=(~/.zsh/completions $fpath)
+# autoload -U compinit && compinit
+#
+# To make it gloabally available place it (on OpenBSD) into:
+# /usr/local/share/zsh/site-functions
 
 # TODO: this file can be improved with options excluding logic, for example
 # (-t)-T[send all tags from the local repository]' in _got_send can be used to
