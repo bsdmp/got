@@ -181,8 +181,9 @@ _got_add_files() {
 _got_revert_paths() {
 	local paths
 
-	# only these status codes make sense for 'got rv', same technique for
-	# other commands with other codes below
+	# XXX: only these status codes make sense for 'got rv', same technique
+	# for other commands with other codes below, substr() is used because
+	# filenames can contain spaces
 	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{print substr($0, 4)}')
 	reply=(${(f)paths})
 }
