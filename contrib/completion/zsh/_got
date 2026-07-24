@@ -13,7 +13,7 @@ _got_branch_name() {
 
 	_got_branches
 	for name in $reply; do
-		candidates+=("${name}:branch")
+		candidates+=("${name}:")
 	done
 
 	_describe 'branch' candidates
@@ -55,7 +55,7 @@ _got_remote_name() {
 
 	_got_remotes
 	for name in $reply; do
-		candidates+=("${name}:remote")
+		candidates+=("${name}:")
 	done
 
 	_describe 'remote repository' candidates
@@ -96,7 +96,7 @@ _got_tag_name() {
 
 	_got_tags
 	for name in $reply; do
-		candidates+=("${name}:tag")
+		candidates+=("${name}:")
 	done
 
 	_describe 'tag' candidates
@@ -113,7 +113,7 @@ _got_commit_or_keyword() {
 
 	_got_branches
 	for name in $reply; do
-		candidates+=("${name}:branch")
+		candidates+=("${name}:")
 	done
 
 	_describe 'commit' candidates
