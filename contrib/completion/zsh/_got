@@ -1,6 +1,8 @@
 #compdef got
 
 _got_branches() {
+	local branches
+
         branches=$(got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//')
         reply=(${(f)branches})
 }
@@ -44,7 +46,7 @@ _got_remotes() {
 
         # get "origin" from "remote "origin" {"
         remotes=$(grep -E '^remote' "$repo/got.conf" | awk -F'"' '{print $2}')
-        reply=(${(f)remotes_tmp})
+        reply=(${(f)remotes})
 }
 
 _got_remote_name() {
