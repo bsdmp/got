@@ -101,11 +101,24 @@ _got_rebase() {
 		'1::branch:_got_branch_name'
 }
 
+_got_status_codes() {
+	_values -s '' 'status code' \
+		'M[modified file]' \
+		'A[file scheduled for addition]' \
+		'D[file scheduled for deletion]' \
+		'C[modified or added file which contains merge conflicts]' \
+		'\![versioned file was expected on disk but is missing]' \
+		'~[versioned file is obstructed by a non-regular file]' \
+		'?[unversioned item not tracked by got]' \
+		'm[modified file mode (executable bit only)]' \
+		'N[non-existent path specified on the command line]'
+}
+
 _got_status() {
 	_arguments \
 		'-I[show unversioned files even if they match an ignore pattern]' \
-		'(-s)-S[suppress files matching the given status codes]:status codes:' \
-		'(-S)-s[only show files matching the given status codes]:status codes:' \
+		'(-s)-S[suppress files matching the given status codes]:status codes:_got_status_codes' \
+		'(-S)-s[only show files matching the given status codes]:status codes:_got_status_codes' \
 		'*:path:_files'
 }
 
