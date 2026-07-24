@@ -5478,116 +5478,147 @@ match_color(struct tog_colors *colors, const char *line)
 	return NULL;
 }
 
+/*
+ * Check whether 'line' contains a match for the search pattern, so
+ * that every matching line on screen can be highlighted rather than
+ * only the line currently selected by the search cursor. Matching is
+ * done against the tab-expanded line since add_matched_line() looks
+ * for matches the same way.
+ */
 static const struct got_error *
-add_matched_line(int *wtotal, const char *line, int wlimit, int col_tab_align,
-    WINDOW *window, int skipcol, regmatch_t *regmatch)
+line_matches_search(int *matched, const char *line, regex_t *regex)
 {
-	const struct got_error *err = NULL;
-	char *exstr = NULL;
-	wchar_t *wline = NULL;
-	int rme, rms, n, width, scrollx;
-	int width0 = 0, width1 = 0, width2 = 0;
-	char *seg0 = NULL, *seg1 = NULL, *seg2 = NULL;
+	const struct got_error *err;
+	char *exstr;
 
-	*wtotal = 0;
-
-	rms = regmatch->rm_so;
-	rme = regmatch->rm_eo;
+	*matched = 0;
 
 	err = expand_tab(&exstr, line);
 	if (err)
 		return err;
 
-	/* Split the line into 3 segments, according to match offsets. */
-	seg0 = strndup(exstr, rms);
-	if (seg0 == NULL) {
-		err = got_error_from_errno("strndup");
-		goto done;
-	}
-	seg1 = strndup(exstr + rms, rme - rms);
-	if (seg1 == NULL) {
-		err = got_error_from_errno("strndup");
-		goto done;
-	}
-	seg2 = strdup(exstr + rme);
-	if (seg2 == NULL) {
-		err = got_error_from_errno("strndup");
-		goto done;
-	}
+	*matched = match_line(exstr, regex, 0, NULL);
+	free(exstr);
+	return NULL;
+}
 
-	/* draw up to matched token if we haven't scrolled past it */
-	err = format_line(&wline, &width0, NULL, seg0, 0, wlimit,
+/*
+ * Draw one segment of a line which either precedes/follows a regex
+ * match (highlight == 0) or is a regex match itself (highlight == 1).
+ * '*consumed' tracks the display width of the line up to the start of
+ * this segment and is used, together with 'skipcol', to figure out
+ * which part of the segment (if any) is visible once the view has
+ * been scrolled horizontally. '*wlimit' and '*wtotal' are updated to
+ * reflect how much of the available screen width was used up.
+ */
+static const struct got_error *
+draw_matched_segment(WINDOW *window, const char *seg, int col_tab_align,
+    int skipcol, int *consumed, int *wlimit, int *wtotal, int highlight)
+{
+	const struct got_error *err;
+	wchar_t *wline = NULL;
+	int fullwidth = 0, width, scrollx, nscroll;
+
+	if (*wlimit <= 0)
+		return NULL;
+
+	err = format_line(&wline, &fullwidth, NULL, seg, 0, *wlimit,
 	    col_tab_align, 1);
 	if (err)
-		goto done;
-	n = MAX(width0 - skipcol, 0);
-	if (n) {
+		return err;
+
+	nscroll = MAX(skipcol - *consumed, 0);
+	if (nscroll > 0) {
 		free(wline);
-		err = format_line(&wline, &width, &scrollx, seg0, skipcol,
-		    wlimit, col_tab_align, 1);
+		wline = NULL;
+		err = format_line(&wline, &width, &scrollx, seg, nscroll,
+		    *wlimit, col_tab_align, 1);
 		if (err)
-			goto done;
-		waddwstr(window, &wline[scrollx]);
-		wlimit -= width;
-		*wtotal += width;
+			return err;
+	} else {
+		width = fullwidth;
+		scrollx = 0;
 	}
 
-	if (wlimit > 0) {
-		int i = 0, w = 0;
-		size_t wlen;
+	if (highlight)
+		wattron(window, A_STANDOUT);
+	waddwstr(window, &wline[scrollx]);
+	if (highlight)
+		wattroff(window, A_STANDOUT);
 
-		free(wline);
-		err = format_line(&wline, &width1, NULL, seg1, 0, wlimit,
-		    col_tab_align, 1);
+	*wlimit -= width;
+	*wtotal += width;
+
+	free(wline);
+	*consumed += fullwidth;
+	return NULL;
+}
+
+static const struct got_error *
+add_matched_line(int *wtotal, const char *line, int wlimit, int col_tab_align,
+    WINDOW *window, int skipcol, regex_t *regex)
+{
+	const struct got_error *err = NULL;
+	char *exstr = NULL;
+	char *seg = NULL;
+	regmatch_t regmatch;
+	size_t off = 0, len;
+	int consumed = 0;
+
+	*wtotal = 0;
+
+	err = expand_tab(&exstr, line);
+	if (err)
+		return err;
+
+	len = strlen(exstr);
+
+	/* Highlight every match found on this line, not just the first. */
+	while (wlimit > 0 && off <= len &&
+	    regexec(regex, exstr + off, 1, &regmatch,
+	    off > 0 ? REG_NOTBOL : 0) == 0) {
+		seg = strndup(exstr + off, regmatch.rm_so);
+		if (seg == NULL) {
+			err = got_error_from_errno("strndup");
+			goto done;
+		}
+		err = draw_matched_segment(window, seg, col_tab_align,
+		    skipcol, &consumed, &wlimit, wtotal, 0);
+		free(seg);
+		seg = NULL;
 		if (err)
 			goto done;
-		wlen = wcslen(wline);
-		while (i < wlen) {
-			width = wcwidth(wline[i]);
-			if (width == -1) {
-				/* should not happen, tabs are expanded */
-				err = got_error(GOT_ERR_RANGE);
-				goto done;
-			}
-			if (width0 + w + width > skipcol)
-				break;
-			w += width;
-			i++;
+
+		seg = strndup(exstr + off + regmatch.rm_so,
+		    regmatch.rm_eo - regmatch.rm_so);
+		if (seg == NULL) {
+			err = got_error_from_errno("strndup");
+			goto done;
 		}
-		/* draw (visible part of) matched token (if scrolled into it) */
-		if (width1 - w > 0) {
-			wattron(window, A_STANDOUT);
-			waddwstr(window, &wline[i]);
-			wattroff(window, A_STANDOUT);
-			wlimit -= (width1 - w);
-			*wtotal += (width1 - w);
-		}
+		err = draw_matched_segment(window, seg, col_tab_align,
+		    skipcol, &consumed, &wlimit, wtotal, 1);
+		free(seg);
+		seg = NULL;
+		if (err)
+			goto done;
+
+		off += regmatch.rm_eo;
+		if (regmatch.rm_so == regmatch.rm_eo)
+			off++;  /* avoid looping forever on empty matches */
 	}
 
-	if (wlimit > 0) {  /* draw rest of line */
-		free(wline);
-		if (skipcol > width0 + width1) {
-			err = format_line(&wline, &width2, &scrollx, seg2,
-			    skipcol - (width0 + width1), wlimit,
-			    col_tab_align, 1);
-			if (err)
-				goto done;
-			waddwstr(window, &wline[scrollx]);
-		} else {
-			err = format_line(&wline, &width2, NULL, seg2, 0,
-			    wlimit, col_tab_align, 1);
-			if (err)
-				goto done;
-			waddwstr(window, wline);
+	if (wlimit > 0 && off <= len) {  /* draw rest of line */
+		seg = strdup(exstr + off);
+		if (seg == NULL) {
+			err = got_error_from_errno("strdup");
+			goto done;
 		}
-		*wtotal += width2;
+		err = draw_matched_segment(window, seg, col_tab_align,
+		    skipcol, &consumed, &wlimit, wtotal, 0);
 	}
 done:
-	free(wline);
+	free(seg);
 	free(exstr);
-	free(seg0);
-	free(seg1);
-	free(seg2);
 	return err;
 }
 
@@ -5644,7 +5675,6 @@ static const struct got_error *
 draw_file(struct tog_view *view, const char *header)
 {
 	struct tog_diff_view_state *s = &view->state.diff;
-	regmatch_t *regmatch = &view->regmatch;
 	const struct got_error *err;
 	int nprinted = 0;
 	char *line;
@@ -5652,6 +5682,7 @@ draw_file(struct tog_view *view, const char *header)
 	ssize_t linelen;
 	wchar_t *wline;
 	int width;
+	int highlight;
 	int max_lines = view->nlines;
 	int nlines = s->nlines;
 	off_t line_offset;
@@ -5735,10 +5766,18 @@ draw_file(struct tog_view *view, const char *header)
 			attr |= COLOR_PAIR(linetype);
 		if (attr)
 			wattron(view->window, attr);
-		if (s->first_displayed_line + nprinted == s->matched_line &&
-		    regmatch->rm_so >= 0 && regmatch->rm_so < regmatch->rm_eo) {
+		highlight = 0;
+		if (view->search_started) {
+			err = line_matches_search(&highlight, line,
+			    &view->regex);
+			if (err) {
+				free(line);
+				return err;
+			}
+		}
+		if (highlight) {
 			err = add_matched_line(&width, line, view->ncols, 0,
-			    view->window, view->x, regmatch);
+			    view->window, view->x, &view->regex);
 			if (err) {
 				free(line);
 				return err;
@@ -7842,7 +7881,6 @@ draw_blame(struct tog_view *view)
 {
 	struct tog_blame_view_state *s = &view->state.blame;
 	struct tog_blame *blame = &s->blame;
-	regmatch_t *regmatch = &view->regmatch;
 	const struct got_error *err;
 	int lineno = 0, nprinted = 0;
 	char *line = NULL;
@@ -7850,6 +7888,7 @@ draw_blame(struct tog_view *view)
 	ssize_t linelen;
 	wchar_t *wline;
 	int width;
+	int highlight;
 	struct tog_blame_line *blame_line;
 	struct got_object_id *prev_id = NULL;
 	char *id_str;
@@ -7986,13 +8025,21 @@ draw_blame(struct tog_view *view)
 			wstandend(view->window);
 		waddstr(view->window, " ");
 
+		highlight = 0;
+		if (view->search_started) {
+			err = line_matches_search(&highlight, line,
+			    &view->regex);
+			if (err) {
+				free(line);
+				return err;
+			}
+		}
+
 		if (view->ncols <= 9) {
 			width = 9;
-		} else if (s->first_displayed_line + nprinted ==
-		    s->matched_line &&
-		    regmatch->rm_so >= 0 && regmatch->rm_so < regmatch->rm_eo) {
+		} else if (highlight) {
 			err = add_matched_line(&width, line, view->ncols - 9, 9,
-			    view->window, view->x, regmatch);
+			    view->window, view->x, &view->regex);
 			if (err) {
 				free(line);
 				return err;
@@ -10987,12 +11034,12 @@ show_help_view(struct tog_view *view)
 {
 	struct tog_help_view_state	*s = &view->state.help;
 	const struct got_error		*err;
-	regmatch_t			*regmatch = &view->regmatch;
 	wchar_t				*wline;
 	char				*line;
 	ssize_t				 linelen;
 	size_t				 linesz = 0;
 	int				 width, nprinted = 0, rc = 0;
+	int				 highlight;
 	int				 eos = view->nlines;
 
 	if (view_is_hsplit_top(view))
@@ -11049,10 +11096,18 @@ show_help_view(struct tog_view *view)
 
 		if (attr)
 			wattron(view->window, attr);
-		if (s->first_displayed_line + nprinted == s->matched_line &&
-		    regmatch->rm_so >= 0 && regmatch->rm_so < regmatch->rm_eo) {
+		highlight = 0;
+		if (view->search_started) {
+			err = line_matches_search(&highlight, line,
+			    &view->regex);
+			if (err) {
+				free(line);
+				return err;
+			}
+		}
+		if (highlight) {
 			err = add_matched_line(&width, line, view->ncols - 1, 0,
-			    view->window, view->x, regmatch);
+			    view->window, view->x, &view->regex);
 			if (err) {
 				free(line);
 				return err;
