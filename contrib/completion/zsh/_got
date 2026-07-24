@@ -1,31 +1,10 @@
 #compdef got
 
-# A minimal zsh completion script for got(1).
-#
-# This is a starting point: right now it only knows about the
-# 'update' ('up'), 'fetch' ('fe'), 'rebase' ('rb'), and 'status'
-# ('st') commands, plus a few of their options. Additional commands
-# and options can be added the same way: add a branch to the case
-# statement in _got() below, and a matching _got_<command> function.
-
-# Sets $reply to the names of local branches, by parsing 'got branch
-# -l' output, e.g. "* main: 1234567890abcdef..." or "  foo: abcdef...".
 _got_branches() {
-	local line name
-
-	reply=()
-	while IFS= read -r line; do
-		name=${line:2}
-		name=${name%%:*}
-		[[ -n $name ]] && reply+=("$name")
-	done < <(got branch -l 2>/dev/null)
+        branches=$(got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//')
+        reply=(${(f)branches})
 }
 
-# Candidates for options that take a local branch name, such as
-# 'got update -b' or 'got fetch -b'. Note that 'got fetch -b' actually
-# expects a branch name on the remote repository, which may differ
-# from the local branch list used here; this is an approximation
-# until remote branches can be queried directly.
 _got_branch_name() {
 	local -a candidates
 	local name
@@ -38,9 +17,6 @@ _got_branch_name() {
 	_describe 'branch' candidates
 }
 
-# Sets $reply to the repository path used by the work tree containing
-# $PWD, by walking up to find a '.got' directory and reading its
-# 'repository' file (see got-worktree.5). Empty if none is found.
 _got_worktree_repository_path() {
 	local dir=$PWD
 
@@ -55,30 +31,22 @@ _got_worktree_repository_path() {
 	done
 }
 
-# Sets $reply to the names of remotes configured in the current work
-# tree repository's got.conf(5), i.e. every 'remote "name" { ... }'
-# block's name.
 _got_remotes() {
-	local repo line name
-	local -a tok
+	local repo remotes
 
 	reply=()
 	_got_worktree_repository_path
 	repo=$reply[1]
 	reply=()
-	[[ -z $repo || ! -f $repo/got.conf ]] && return
+	if [[ -z $repo || ! -f $repo/got.conf ]]; then
+		return
+	fi
 
-	while IFS= read -r line; do
-		tok=(${(z)line})
-		if [[ $tok[1] == remote ]]; then
-			name=${(Q)tok[2]}
-			[[ -n $name ]] && reply+=("$name")
-		fi
-	done < "$repo/got.conf"
+        # get "origin" from "remote "origin" {"
+        remotes=$(grep -E '^remote' "$repo/got.conf" | awk -F'"' '{print $2}')
+        reply=(${(f)remotes_tmp})
 }
 
-# Candidates for 'got fetch's optional remote-repository argument:
-# the remote names configured in got.conf(5).
 _got_remote_name() {
 	local -a candidates
 	local name
@@ -91,14 +59,10 @@ _got_remote_name() {
 	_describe 'remote repository' candidates
 }
 
-# Candidates accepted by 'got update -c': a branch name, or one of
-# the ':base'/':head' keywords documented in got-worktree(5).
 _got_commit_or_keyword() {
 	local -a candidates
 	local name
 
-	# The leading ':' must be escaped since _describe uses ':' as
-	# the separator between a candidate word and its description.
 	candidates=(
 		'\:base:work tree base commit'
 		'\:head:branch head commit'
@@ -125,15 +89,7 @@ _got_fetch() {
 		'1::remote repository:_got_remote_name'
 }
 
-# '-a', '-l', and '-X' are each only valid on their own (or with each
-# other's exclusions applied below); '-c' and '-C' may be combined
-# with each other but not with '-a', '-l', or '-X'. See got-rebase(1)
-# for the full set of option_conflict() checks this mirrors.
 _got_rebase() {
-	# A spec's exclusion list says what *it* disables once *it* is
-	# used, not what disables it - so '-a' and '-c' must each list
-	# ':' (all normal arguments) to rule out the branch positional,
-	# rather than the positional spec listing '-a -c'.
 	_arguments \
 		'(-C -c -l -X :)-a[abort an interrupted rebase operation]' \
 		'(-a -l -X :)-c[continue an interrupted rebase operation]' \
@@ -160,12 +116,6 @@ _got() {
 
 	case $state in
 	command)
-		# Only aliases are offered here, not full command names:
-		# some full names share a prefix with their own alias
-		# (e.g. 'up'/'update', 'fe'/'fetch'), which would mean
-		# 'got up<Tab>' can't complete on its own and needs a
-		# second <Tab> to list them. Full names are still accepted
-		# if typed out, see the case below.
 		_values 'got command' \
 			'up[update a work tree (alias for update)]' \
 			'fe[fetch new changes from a remote repository (alias for fetch)]' \
