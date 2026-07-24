@@ -1,5 +1,10 @@
 #compdef got
 
+# Zsh tab completion for got 0.128-current, for 'got <tab>' we complete only
+# aliases, to not mess with 'got up<tab>' which matches both 'up' alias and
+# 'update', probably most people use only aliases in their interactive sessions
+# anyway.
+
 # TODO: this file can be improved with options excluding logic, for example
 # (-t)-T[send all tags from the local repository]' in _got_send can be used to
 # make zsh remove '-t' from completion if -T is used, but lets keep it simple
