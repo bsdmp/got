@@ -23,7 +23,7 @@ _got_worktree_repository_path() {
 	local dir=$PWD
 
 	reply=()
-	while :; do
+	while true; do
 		if [[ -f $dir/.got/repository ]]; then
 			reply=("$(<$dir/.got/repository)")
 			return
@@ -66,6 +66,7 @@ _got_ssh_config_hosts() {
 
 	[[ -r ~/.ssh/config ]] || return
 
+	# awk loop is needed for "Host host1 host2 host3" syntaxis, grep to exclude "Host pattern* pattern?"
 	hosts=$(grep -iE '^[[:space:]]*host(name)?[[:space:]]' ~/.ssh/config | awk '{for (i=2;i<=NF;i++) print $i}' | grep -vE '[*?]')
 	candidates=(${(f)hosts})
 	compadd -a candidates
