@@ -766,6 +766,10 @@ struct tog_view {
 #define TOG_SEARCH_HAVE_MORE	1
 #define TOG_SEARCH_NO_MORE	2
 #define TOG_SEARCH_HAVE_NONE	3
+#define TOG_MSG_SEARCH_WRAP_FORWARD \
+	"search hit BOTTOM, continuing at TOP"
+#define TOG_MSG_SEARCH_WRAP_BACKWARD \
+	"search hit TOP, continuing at BOTTOM"
 	regex_t regex;
 	regmatch_t regmatch;
 	const char *action;
@@ -6759,10 +6763,13 @@ search_next_view_match(struct tog_view *view)
 				break;
 			}
 
-			if (view->searching == TOG_SEARCH_FORWARD)
+			if (view->searching == TOG_SEARCH_FORWARD) {
 				lineno = 1;
-			else
+				view->action = TOG_MSG_SEARCH_WRAP_FORWARD;
+			} else {
 				lineno = nlines;
+				view->action = TOG_MSG_SEARCH_WRAP_BACKWARD;
+			}
 		}
 
 		offset = view->type == TOG_VIEW_DIFF ?
@@ -9505,10 +9512,13 @@ search_next_tree_view(struct tog_view *view)
 				view->search_next_done = TOG_SEARCH_HAVE_MORE;
 				return NULL;
 			}
-			if (view->searching == TOG_SEARCH_FORWARD)
+			if (view->searching == TOG_SEARCH_FORWARD) {
 				te = got_object_tree_get_first_entry(s->tree);
-			else
+				view->action = TOG_MSG_SEARCH_WRAP_FORWARD;
+			} else {
 				te = got_object_tree_get_last_entry(s->tree);
+				view->action = TOG_MSG_SEARCH_WRAP_BACKWARD;
+			}
 
 			if (te == NULL)
 				break;
@@ -10229,10 +10239,13 @@ search_next_ref_view(struct tog_view *view)
 				view->search_next_done = TOG_SEARCH_HAVE_MORE;
 				return NULL;
 			}
-			if (view->searching == TOG_SEARCH_FORWARD)
+			if (view->searching == TOG_SEARCH_FORWARD) {
 				re = TAILQ_FIRST(&s->refs);
-			else
+				view->action = TOG_MSG_SEARCH_WRAP_FORWARD;
+			} else {
 				re = TAILQ_LAST(&s->refs, tog_reflist_head);
+				view->action = TOG_MSG_SEARCH_WRAP_BACKWARD;
+			}
 		}
 
 		if (match_reflist_entry(re, &view->regex)) {
