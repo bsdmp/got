@@ -163,7 +163,7 @@ _got_import() {
 }
 
 _got_clone() {
-	_arguments : \
+	_arguments -s : \
 		'(-b -l)-a[fetch all branches from the remote repository]' \
 		'(-a -l)*-b[fetch the specified branch]:branch:' \
 		'(-l)-i[specify an SSH identity file]:identity file:_files' \
@@ -266,7 +266,7 @@ _got_branch() {
 }
 
 _got_tag() {
-	_arguments : \
+	_arguments -s : \
 		'-c[make the new tag point at the specified commit]:commit:_got_commit_or_keyword' \
 		'-l[list all existing tags]' \
 		'-m[use the specified tag message]:message:' \
@@ -325,7 +325,7 @@ _got_commit() {
 }
 
 _got_fetch() {
-	_arguments : \
+	_arguments -s : \
 		'(-b -l -X)-a[fetch all branches from the remote repository]' \
 		'(-a -l -X)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name' \
 		'(-l -X)-d[delete branches and tags no longer present on the remote]' \
@@ -425,7 +425,7 @@ _got_info() {
 }
 
 _got_send() {
-	_arguments : \
+	_arguments -s : \
 		'(-b)-a[send all branches from the local repository]' \
 		'(-a)*-b[send the specified branch]:branch:_got_branch_name' \
 		'*-d[delete the specified branch on the remote repository]:branch:_got_branch_name' \
