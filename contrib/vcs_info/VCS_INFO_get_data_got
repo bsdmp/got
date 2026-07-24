@@ -1,0 +1,17 @@
+## vim:ft=zsh
+## got support
+## Distributed under the same BSD-ish license as zsh itself.
+
+setopt localoptions NO_shwordsplit
+local gotbase headref branch
+
+gotbase=${vcs_comm[basedir]}
+headref=${gotbase}/.got/head-ref
+
+[[ -r ${headref} ]] || return 1
+branch=$(< ${headref})
+branch=${branch#refs/heads/}
+
+rrn=${gotbase:t}
+VCS_INFO_formats '' "${branch}" "${gotbase}" '' '' '' ''
+return 0
