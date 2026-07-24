@@ -147,6 +147,55 @@ _got_remove_status_codes() {
 		'?[unversioned file (deletion is permanent)]'
 }
 
+_got_add_paths() {
+	local paths
+
+	# use substr because path can contain spaces, same bellow
+	paths=$(got status 2>/dev/null | grep '^?' | awk '{print substr($0, 4)}')
+	reply=(${(f)paths})
+}
+
+_got_add_files() {
+	_got_add_paths
+	compadd -a reply
+}
+
+_got_revert_paths() {
+	local paths
+
+	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
+	reply=(${(f)paths})
+}
+
+_got_revert_files() {
+	_got_revert_paths
+	_describe 'file' reply
+}
+
+_got_stage_paths() {
+	local paths
+
+	paths=$(got status 2>/dev/null | grep '^[AMD]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
+	reply=(${(f)paths})
+}
+
+_got_stage_files() {
+	_got_stage_paths
+	_describe 'file' reply
+}
+
+_got_unstage_paths() {
+	local paths
+
+	paths=$(got status 2>/dev/null | grep '^.[AMD]' | awk '{code = substr($0, 2, 1); path = substr($0, 4); print path ":" code}')
+	reply=(${(f)paths})
+}
+
+_got_unstage_files() {
+	_got_unstage_paths
+	_describe 'file' reply
+}
+
 _got_init() {
 	_arguments : \
 		'-A[configure the hashing algorithm used for object IDs]:hashing algorithm:(sha1 sha256)' \
@@ -279,19 +328,6 @@ _got_tag() {
 		'1::tag name:_got_tag_name'
 }
 
-_got_add_paths() {
-	local paths
-
-	# use substr because path can contain spaces
-	paths=$(got status 2>/dev/null | grep '^?' | awk '{print substr($0, 4)}')
-	reply=(${(f)paths})
-}
-
-_got_add_files() {
-	_got_add_paths
-	compadd -a reply
-}
-
 _got_add() {
 	_arguments : \
 		'-I[add files even if they match an ignore pattern]' \
@@ -318,18 +354,6 @@ _got_patch() {
 		'1::patch file:_files'
 }
 
-_got_revert_paths() {
-	local paths
-
-	paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
-	reply=(${(f)paths})
-}
-
-_got_revert_files() {
-	_got_revert_paths
-	_describe 'file' reply
-}
-
 _got_revert() {
 	_arguments : \
 		'-F[read y/n/q responses from the specified file]:response script:_files' \
@@ -350,6 +374,9 @@ _got_commit() {
 		'*:path:_files'
 }
 
+# (<flags>)[*]flag[description]
+# - flags in paranthesises means "remove those if the flag is used"
+# asterisk means the flag can be repeated like -vvv
 _got_fetch() {
 	_arguments -s : \
 		'(-b -l -X)-a[fetch all branches from the remote repository]' \
@@ -421,18 +448,6 @@ _got_merge() {
 		'(-a -c -C)1::branch:_got_branch_name'
 }
 
-_got_stage_paths() {
-	local paths
-
-	paths=$(got status 2>/dev/null | grep '^[AMD]' | awk '{code = substr($0, 1, 1); path = substr($0, 4); print path ":" code}')
-	reply=(${(f)paths})
-}
-
-_got_stage_files() {
-	_got_stage_paths
-	_describe 'file' reply
-}
-
 _got_stage() {
 	_arguments : \
 		'-F[read y/n/q responses from the specified file]:response script:_files' \
@@ -440,18 +455,6 @@ _got_stage() {
 		'-p[interactively select or reject changes for staging]' \
 		'-S[allow staging of symbolic links pointing outside version control]' \
 		'*:path:_got_stage_files'
-}
-
-_got_unstage_paths() {
-	local paths
-
-	paths=$(got status 2>/dev/null | grep '^.[AMD]' | awk '{code = substr($0, 2, 1); path = substr($0, 4); print path ":" code}')
-	reply=(${(f)paths})
-}
-
-_got_unstage_files() {
-	_got_unstage_paths
-	_describe 'file' reply
 }
 
 _got_unstage() {
