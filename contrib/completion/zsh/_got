@@ -61,6 +61,47 @@ _got_remote_name() {
 	_describe 'remote repository' candidates
 }
 
+_got_ssh_config_hosts() {
+	local -a candidates tok
+	local line host
+
+	[[ -r ~/.ssh/config ]] || return
+
+	while IFS= read -r line; do
+		tok=(${(z)line})
+		[[ $tok[1] == (#i)host(|name) ]] || continue
+		for host in $tok[2,-1]; do
+			[[ $host == *[*?]* ]] && continue
+			candidates+=("$host")
+		done
+	done < ~/.ssh/config
+
+	compadd -a candidates
+}
+
+_got_tags() {
+	local line name
+
+	reply=()
+	while IFS= read -r line; do
+		name=${line%%:*}
+		name=${name#refs/tags/}
+		[[ -n $name ]] && reply+=("$name")
+	done < <(got ref -l refs/tags 2>/dev/null)
+}
+
+_got_tag_name() {
+	local -a candidates
+	local name
+
+	_got_tags
+	for name in $reply; do
+		candidates+=("${name}:tag")
+	done
+
+	_describe 'tag' candidates
+}
+
 _got_commit_or_keyword() {
 	local -a candidates
 	local name
@@ -122,6 +163,21 @@ _got_status() {
 		'*:path:_files'
 }
 
+_got_send() {
+	_arguments \
+		'(-b)-a[send all branches from the local repository]' \
+		'(-a)*-b[send the specified branch]:branch:_got_branch_name' \
+		'*-d[delete the specified branch on the remote repository]:branch:_got_branch_name' \
+		'-f[force the server to overwrite existing branches or tags]' \
+		'-i[specify an SSH identity file]:identity file:_files' \
+		'-J[specify a jumphost for SSH connections]:jumphost:_got_ssh_config_hosts' \
+		'-q[suppress progress reporting]' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'(-t)-T[send all tags from the local repository]' \
+		'(-T)*-t[send the specified tag]:tag:_got_tag_name' \
+		'1::remote repository:_got_remote_name'
+}
+
 _got() {
 	local line state
 
@@ -135,7 +191,8 @@ _got() {
 			'up[update a work tree (alias for update)]' \
 			'fe[fetch new changes from a remote repository (alias for fetch)]' \
 			'rb[rebase commits onto the tip of the current branch (alias for rebase)]' \
-			'st[show the modification status of files in a work tree (alias for status)]'
+			'st[show the modification status of files in a work tree (alias for status)]' \
+			'se[send new changes to a remote repository (alias for send)]'
 		;;
 	args)
 		case $line[1] in
@@ -150,6 +207,9 @@ _got() {
 			;;
 		status|st)
 			_got_status
+			;;
+		send|se)
+			_got_send
 			;;
 		esac
 		;;
