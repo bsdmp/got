@@ -1,0 +1,61 @@
+#compdef got
+
+# A minimal zsh completion script for got(1).
+#
+# This is a starting point: right now it only knows about the
+# 'update' command and its '-c' option. Additional commands and
+# options can be added the same way: add a branch to the case
+# statement in _got() below, and a matching _got_<command> function.
+
+# Candidates accepted by 'got update -c': a branch name, or one of
+# the ':base'/':head' keywords documented in got-worktree(5).
+_got_commit_or_keyword() {
+	local -a candidates
+	local line name
+
+	# The leading ':' must be escaped since _describe uses ':' as
+	# the separator between a candidate word and its description.
+	candidates=(
+		'\:base:work tree base commit'
+		'\:head:branch head commit'
+	)
+
+	# 'got branch -l' prints one line per branch, formatted as
+	# "got.c: printf("%c %s: %s\n", marker, refname, refstr)",
+	# e.g. "* main: 1234567890abcdef..." or "  foo: abcdef123456...".
+	while IFS= read -r line; do
+		name=${line:2}
+		name=${name%%:*}
+		[[ -n $name ]] && candidates+=("${name}:branch")
+	done < <(got branch -l 2>/dev/null)
+
+	_describe 'commit' candidates
+}
+
+_got_update() {
+	_arguments \
+		'-c[update the work tree to the specified commit]:commit:_got_commit_or_keyword'
+}
+
+_got() {
+	local line state
+
+	_arguments -C \
+		'1: :->command' \
+		'*::arg:->args'
+
+	case $state in
+	command)
+		_values 'got command' update
+		;;
+	args)
+		case $line[1] in
+		update)
+			_got_update
+			;;
+		esac
+		;;
+	esac
+}
+
+_got "$@"
