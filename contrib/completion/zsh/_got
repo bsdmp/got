@@ -38,6 +38,59 @@ _got_branch_name() {
 	_describe 'branch' candidates
 }
 
+# Sets $reply to the repository path used by the work tree containing
+# $PWD, by walking up to find a '.got' directory and reading its
+# 'repository' file (see got-worktree.5). Empty if none is found.
+_got_worktree_repository_path() {
+	local dir=$PWD
+
+	reply=()
+	while :; do
+		if [[ -f $dir/.got/repository ]]; then
+			reply=("$(<$dir/.got/repository)")
+			return
+		fi
+		[[ $dir == / ]] && return
+		dir=${dir:h}
+	done
+}
+
+# Sets $reply to the names of remotes configured in the current work
+# tree repository's got.conf(5), i.e. every 'remote "name" { ... }'
+# block's name.
+_got_remotes() {
+	local repo line name
+	local -a tok
+
+	reply=()
+	_got_worktree_repository_path
+	repo=$reply[1]
+	reply=()
+	[[ -z $repo || ! -f $repo/got.conf ]] && return
+
+	while IFS= read -r line; do
+		tok=(${(z)line})
+		if [[ $tok[1] == remote ]]; then
+			name=${(Q)tok[2]}
+			[[ -n $name ]] && reply+=("$name")
+		fi
+	done < "$repo/got.conf"
+}
+
+# Candidates for 'got fetch's optional remote-repository argument:
+# the remote names configured in got.conf(5).
+_got_remote_name() {
+	local -a candidates
+	local name
+
+	_got_remotes
+	for name in $reply; do
+		candidates+=("${name}:remote")
+	done
+
+	_describe 'remote repository' candidates
+}
+
 # Candidates accepted by 'got update -c': a branch name, or one of
 # the ':base'/':head' keywords documented in got-worktree(5).
 _got_commit_or_keyword() {
@@ -68,7 +121,8 @@ _got_update() {
 _got_fetch() {
 	_arguments \
 		'(-b)-a[fetch all branches from the remote repository]' \
-		'(-a)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name'
+		'(-a)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name' \
+		'1::remote repository:_got_remote_name'
 }
 
 _got() {
