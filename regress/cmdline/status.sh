@@ -885,9 +885,6 @@ test_status_cvsignore_and_gitignore_together() {
 		return 1
 	fi
 
-	# .cvsignore and .gitignore both live in the worktree root here.
-	# Patterns from both files must be honored; a directory's ignore
-	# lists must not clobber each other.
 	echo "unversioned file" > $testroot/wt/foo
 	echo "unversioned file" > $testroot/wt/bar
 	echo "unversioned file" > $testroot/wt/baz
