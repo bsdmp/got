@@ -875,6 +875,32 @@ test_status_multiple_gitignore_files() {
 	test_done "$testroot" "$ret"
 }
 
+test_status_root_gitignore_applies_to_subdir() {
+	local testroot=`test_init status_gitignore_root_pattern_applies_to_subdir`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	echo "**/foo" > $testroot/wt/.gitignore
+
+	echo "unversioned file" > $testroot/wt/epsilon/foo
+	echo "unversioned file" > $testroot/wt/epsilon/unversioned
+
+	echo '?  epsilon/unversioned' > $testroot/stdout.expected
+	(cd $testroot/wt && got status epsilon > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
 test_status_status_code() {
 	local testroot=`test_init status_status_code`
 
@@ -1247,6 +1273,7 @@ run_test test_status_gitignore_leading_slashes
 run_test test_status_gitignore_trailing_slashes
 run_test test_status_gitignore_comments
 run_test test_status_multiple_gitignore_files
+run_test test_status_root_gitignore_applies_to_subdir
 run_test test_status_status_code
 run_test test_status_suppress
 run_test test_status_empty_file
