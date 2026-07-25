@@ -302,7 +302,7 @@ got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
 			}
 		}
 
-		err = got_pathlist_insert(NULL, pe, patterns, pattern, NULL);
+		err = got_pathlist_insert(NULL, patterns, pattern, NULL);
 		if (err)
 			break;
 	}
