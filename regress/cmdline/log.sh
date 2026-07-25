@@ -108,7 +108,8 @@ test_log_shallow_clone() {
 	fi
 
 	grep ^commit $testroot/stdout > $testroot/stdout.commits
-	echo "commit $head_rev (master)" > $testroot/stdout.expected
+	echo "commit $head_rev (master, origin/master)" \
+	    > $testroot/stdout.expected
 
 	cmp -s $testroot/stdout.expected $testroot/stdout.commits
 	ret=$?
