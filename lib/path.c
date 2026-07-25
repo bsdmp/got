@@ -269,7 +269,7 @@ got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
     const char *prefix)
 {
 	const struct got_error *err = NULL;
-	struct got_pathlist_head *pe = NULL;
+	struct got_pathlist_entry *pe = NULL;
 	char *line = NULL, *pattern;
 	size_t linesize = 0;
 	ssize_t linelen;
