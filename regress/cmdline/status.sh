@@ -901,6 +901,48 @@ test_status_root_gitignore_applies_to_subdir() {
 	test_done "$testroot" "$ret"
 }
 
+test_status_gitignore_multiple_ancestor_dirs() {
+	local testroot=`test_init status_gitignore_multiple_ancestor_dirs`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	mkdir -p $testroot/wt/foo/bar/baz/lala/land
+
+	echo "**/root_ignored" > $testroot/wt/.gitignore
+	echo "**/foo_ignored" > $testroot/wt/foo/.gitignore
+	echo "**/bar_ignored" > $testroot/wt/foo/bar/.gitignore
+	echo "**/baz_ignored" > $testroot/wt/foo/bar/baz/.gitignore
+	echo "**/lala_ignored" > $testroot/wt/foo/bar/baz/lala/.gitignore
+
+	echo "unversioned file" \
+	    > $testroot/wt/foo/bar/baz/lala/land/root_ignored
+	echo "unversioned file" \
+	    > $testroot/wt/foo/bar/baz/lala/land/foo_ignored
+	echo "unversioned file" \
+	    > $testroot/wt/foo/bar/baz/lala/land/bar_ignored
+	echo "unversioned file" \
+	    > $testroot/wt/foo/bar/baz/lala/land/baz_ignored
+	echo "unversioned file" \
+	    > $testroot/wt/foo/bar/baz/lala/land/lala_ignored
+	echo "unversioned file" \
+	    > $testroot/wt/foo/bar/baz/lala/land/visible
+
+	echo '?  foo/bar/baz/lala/land/visible' > $testroot/stdout.expected
+	(cd $testroot/wt && got status foo/bar/baz/lala/land > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
 test_status_status_code() {
 	local testroot=`test_init status_status_code`
 
@@ -1274,6 +1316,7 @@ run_test test_status_gitignore_trailing_slashes
 run_test test_status_gitignore_comments
 run_test test_status_multiple_gitignore_files
 run_test test_status_root_gitignore_applies_to_subdir
+run_test test_status_gitignore_multiple_ancestor_dirs
 run_test test_status_status_code
 run_test test_status_suppress
 run_test test_status_empty_file
