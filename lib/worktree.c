@@ -3794,7 +3794,7 @@ static const struct got_error *
 read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 {
 	const struct got_error *err = NULL;
-	struct got_pathlist_entry *pe = NULL;
+	struct got_pathlist_entry *pe = NULL, *ipe = NULL;
 	struct got_pathlist_head *ignorelist;
 	char *line = NULL, *pattern, *dirpath = NULL;
 	size_t linesize = 0;
@@ -3826,7 +3826,13 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 			err = got_error_from_errno("asprintf");
 			goto done;
 		}
-		err = got_pathlist_insert(NULL, ignorelist, pattern, NULL);
+		err = got_pathlist_insert(&ipe, ignorelist, pattern, NULL);
+		/*
+		 * got_pathlist_insert() silently rejects a duplicate pattern;
+		 * free it.
+		 */
+		if (err || ipe == NULL)
+			free(pattern);
 		if (err)
 			goto done;
 	}
@@ -4279,7 +4285,15 @@ worktree_status(struct got_worktree *worktree, const char *path,
 		arg.cancel_arg = cancel_arg;
 		arg.report_unchanged = report_unchanged;
 		arg.no_ignores = no_ignores;
-		if (!no_ignores) {
+		/*
+		 * When path is the worktree root, the directory walk below
+		 * will visit the root itself via status_traverse(), which
+		 * loads its .cvsignore/.gitignore already; doing it here
+		 * too would just re-read and immediately discard them as
+		 * duplicates. Only needed for a non-root path, to pick up
+		 * ignores from directories the walk itself never visits.
+		 */
+		if (!no_ignores && path[0] != '\0') {
 			err = add_ignores_from_parent_paths(&ignores,
 			    worktree->root_path, path);
 			if (err)
