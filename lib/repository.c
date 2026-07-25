@@ -63,6 +63,7 @@
 #include "got_lib_pack.h"
 #include "got_lib_privsep.h"
 #include "got_lib_object_cache.h"
+#include "got_lib_object_idset.h"
 #include "got_lib_repository.h"
 #include "got_lib_gotconfig.h"
 
@@ -180,6 +181,66 @@ get_path_git_child(struct got_repository *repo, const char *basename)
 		return NULL;
 
 	return path_child;
+}
+
+/*
+ * Read the .git/shallow file of a shallow clone, if present, into
+ * repo->shallow_commits. Each line names a commit whose parent(s) were
+ * not fetched; open_commit() in object_open_privsep.c and object_open_io.c
+ * consults this set to present such commits as parent-less rather than
+ * letting callers try to open a parent object which does not exist.
+ * A repository which is not a shallow clone simply has no such file,
+ * which is not an error; repo->shallow_commits is left NULL in that case.
+ */
+static const struct got_error *
+read_shallow_commits(struct got_repository *repo)
+{
+	const struct got_error *err = NULL;
+	FILE *f;
+	char *path, *line = NULL;
+	size_t linesize = 0;
+	ssize_t linelen;
+	struct got_object_id id;
+
+	path = get_path_git_child(repo, GOT_SHALLOW_FILE);
+	if (path == NULL)
+		return got_error_from_errno("asprintf");
+
+	f = fopen(path, "re");
+	if (f == NULL) {
+		err = (errno == ENOENT) ? NULL :
+		    got_error_from_errno2("fopen", path);
+		free(path);
+		return err;
+	}
+
+	repo->shallow_commits = got_object_idset_alloc();
+	if (repo->shallow_commits == NULL) {
+		err = got_error_from_errno("got_object_idset_alloc");
+		goto done;
+	}
+
+	while ((linelen = getline(&line, &linesize, f)) != -1) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
+		if (line[0] == '\0')
+			continue;
+		if (!got_parse_object_id(&id, line, repo->algo)) {
+			err = got_error_path(line, GOT_ERR_BAD_OBJ_ID_STR);
+			break;
+		}
+		err = got_object_idset_add(repo->shallow_commits, &id, NULL);
+		if (err)
+			break;
+	}
+	if (err == NULL && ferror(f))
+		err = got_error_from_errno("getline");
+done:
+	free(line);
+	if (fclose(f) == EOF && err == NULL)
+		err = got_error_from_errno2("fclose", path);
+	free(path);
+	return err;
 }
 
 char *
@@ -834,6 +895,10 @@ got_repo_open(struct got_repository **repop, const char *path,
 		}
 	}
 
+	err = read_shallow_commits(repo);
+	if (err)
+		goto done;
+
 	err = got_repo_list_packidx(&repo->packidx_paths, repo);
 done:
 	if (err)
@@ -904,6 +969,9 @@ got_repo_close(struct got_repository *repo)
 	if (repo->gotconfig)
 		got_gotconfig_free(repo->gotconfig);
 	got_repo_free_gitconfig(repo);
+
+	if (repo->shallow_commits)
+		got_object_idset_free(repo->shallow_commits);
 
 	got_pathlist_free(&repo->packidx_paths, GOT_PATHLIST_FREE_PATH);
 	free(repo);

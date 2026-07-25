@@ -38,6 +38,7 @@
 #include "got_lib_hash.h"
 #include "got_lib_object.h"
 #include "got_lib_object_cache.h"
+#include "got_lib_object_idset.h"
 #include "got_lib_object_parse.h"
 #include "got_lib_pack.h"
 #include "got_lib_repository.h"
@@ -443,6 +444,12 @@ open_commit(struct got_commit_object **commit,
 			err = got_error_from_errno("close");
 		if (err)
 			return err;
+	}
+
+	if (err == NULL && repo->shallow_commits != NULL &&
+	    got_object_idset_contains(repo->shallow_commits, id)) {
+		got_object_id_queue_free(&(*commit)->parent_ids);
+		(*commit)->nparents = 0;
 	}
 
 	if (err == NULL) {

@@ -70,6 +70,54 @@ test_log_in_bare_repo() {
 	test_done "$testroot" "0"
 }
 
+test_log_shallow_clone() {
+	local testroot=`test_init log_shallow_clone`
+
+	echo "1" > $testroot/repo/numbers
+	git -C $testroot/repo add numbers
+	git_commit $testroot/repo -m "add numbers"
+
+	echo "2" >> $testroot/repo/numbers
+	git -C $testroot/repo commit -aqm "modify numbers"
+	local head_rev=`git_show_head $testroot/repo`
+
+	# --no-local forces git to create a real shallow clone (a plain
+	# local-path clone would otherwise just hardlink/copy the full
+	# history and ignore --depth).
+	git clone -q --depth 1 --no-local \
+	    $testroot/repo $testroot/shallow > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "git clone --depth 1 failed unexpectedly" >&2
+		test_done "$testroot" "1"
+		return 1
+	fi
+
+	# The commit at the shallow boundary has a real parent id recorded
+	# in its header, but that parent object was never fetched. 'got log'
+	# must stop there instead of erroring out with "object ... not
+	# found" when it tries to look up that parent.
+	(cd $testroot/shallow && got log \
+	    > $testroot/stdout 2> $testroot/stderr)
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "got log failed in shallow clone:" >&2
+		cat $testroot/stderr >&2
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	grep ^commit $testroot/stdout > $testroot/stdout.commits
+	echo "commit $head_rev (master)" > $testroot/stdout.expected
+
+	cmp -s $testroot/stdout.expected $testroot/stdout.commits
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout.commits
+	fi
+	test_done "$testroot" "$ret"
+}
+
 test_log_in_worktree() {
 	local testroot=`test_init log_in_worktree 1`
 
@@ -1306,6 +1354,7 @@ EOF
 test_parseargs "$@"
 run_test test_log_in_repo
 run_test test_log_in_bare_repo
+run_test test_log_shallow_clone
 run_test test_log_in_worktree
 run_test test_log_in_worktree_with_path_prefix
 run_test test_log_tag

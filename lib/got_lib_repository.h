@@ -27,6 +27,7 @@
 #define GOT_ORIG_HEAD_FILE	"ORIG_HEAD"
 #define GOT_OBJECTS_PACK_DIR	"objects/pack"
 #define GOT_PACKED_REFS_FILE	"packed-refs"
+#define GOT_SHALLOW_FILE	"shallow"
 
 #define GOT_PACK_CACHE_SIZE	32
 
@@ -64,6 +65,17 @@ struct got_repository {
 	char *path_git_dir;
 	int gitdir_fd;
 	enum got_hash_algorithm algo;
+
+	/*
+	 * IDs of commits listed in the .git/shallow file of a shallow
+	 * clone, i.e. commits whose parent(s) are known but were not
+	 * fetched. NULL if the repository is not a shallow clone.
+	 * Consulted by open_commit() in object_open_privsep.c and
+	 * object_open_io.c to present such commits as having no parents,
+	 * instead of letting callers try to open a parent object which
+	 * does not exist.
+	 */
+	struct got_object_idset *shallow_commits;
 
 	struct got_pathlist_head packidx_paths;
 	struct timespec pack_path_mtime;
