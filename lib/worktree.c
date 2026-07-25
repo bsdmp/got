@@ -4281,9 +4281,9 @@ worktree_status(struct got_worktree *worktree, const char *path,
 		arg.no_ignores = no_ignores;
 		/*
 		 * There is no point in calling add_ignores_from_parent_paths()
-		 * without path argument (got st <path>), since it will only add
-		 * ignore file from the repo root, which we will add anyway
-		 * further down in got_fileindex_diff_dir() walk.
+		 * when path argument to 'got st' is not provided, since it will
+		 * only add ignores files from worktree root and stop,
+		 * got_fileindex_diff_dir() call below will read it anyway.
 		 */
 		if (!no_ignores && path[0] != '\0') {
 			err = add_ignores_from_parent_paths(&ignores,
