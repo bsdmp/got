@@ -876,7 +876,7 @@ test_status_multiple_gitignore_files() {
 }
 
 test_status_root_gitignore_applies_to_subdir() {
-	local testroot=`test_init status_gitignore_root_pattern_applies_to_subdir`
+	local testroot=`test_status_root_gitignore_applies_to_subdir`
 
 	got checkout $testroot/repo $testroot/wt > /dev/null
 	ret=$?

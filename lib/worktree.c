@@ -4280,9 +4280,10 @@ worktree_status(struct got_worktree *worktree, const char *path,
 		arg.report_unchanged = report_unchanged;
 		arg.no_ignores = no_ignores;
 		/*
-		 * There is no point to add parents' paths ignore files if we
-		 * run 'got st' without path argument, got_fileindex_diff_dir()
-		 * will do it for us, starting from the root.
+		 * There is no point in reading ignore files from parent paths
+		 * when 'got st' runs without a path argument:
+		 * got_fileindex_diff_dir() will do it for us, starting from the
+		 * root.
 		 */
 		if (!no_ignores && path[0] != '\0') {
 			err = add_ignores_from_parent_paths(&ignores,
