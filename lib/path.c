@@ -304,12 +304,6 @@ got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
 		}
 
 		err = got_pathlist_insert(&pe, patterns, pattern, NULL);
-		/*
-		 * got_pathlist_insert() silently rejects a duplicate
-		 * pattern; free it.
-		 */
-		if (err || pe == NULL)
-			free(pattern);
 		if (err)
 			break;
 	}
