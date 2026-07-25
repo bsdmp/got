@@ -3662,22 +3662,6 @@ done:
 	return err;
 }
 
-/*
- * Everything needed to decide whether a worktree path is ignored.
- *
- * .cvsignore and .gitignore are kept in separate per-directory pathlists
- * (cvs, git), each keyed by directory path. If both files existed in the
- * same directory and shared a single pathlist keyed by that same
- * directory path, the second got_pathlist_insert() for that directory
- * would collide with the first (got_pathlist_cmp() only compares the
- * directory path, not which ignore file it came from) and silently lose
- * that file's patterns entirely -- see read_ignores(). Keeping the two
- * sources in separate trees avoids the collision.
- *
- * cvs/git are populated fresh by add_ignores{,_from_parent_paths}() for
- * every worktree_status() call and owned by that call: free_ignores()
- * frees them.
- */
 struct got_ignores {
 	struct got_pathlist_head cvs;
 	struct got_pathlist_head git;
@@ -3693,7 +3677,6 @@ struct diff_dir_cb_arg {
     void *status_arg;
     got_cancel_cb cancel_cb;
     void *cancel_arg;
-    /* Per-directory pathlists of ignore patterns. */
     struct got_ignores *ignores;
     int report_unchanged;
     int no_ignores;
@@ -4290,15 +4273,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 		arg.cancel_arg = cancel_arg;
 		arg.report_unchanged = report_unchanged;
 		arg.no_ignores = no_ignores;
-		/*
-		 * When path is the worktree root, the directory walk below
-		 * will visit the root itself via status_traverse(), which
-		 * loads its .cvsignore/.gitignore already; doing it here
-		 * too would just re-read and immediately discard them as
-		 * duplicates. Only needed for a non-root path, to pick up
-		 * ignores from directories the walk itself never visits.
-		 */
-		if (!no_ignores && path[0] != '\0') {
+		if (!no_ignores) {
 			err = add_ignores_from_parent_paths(&ignores,
 			    worktree->root_path, path);
 			if (err)

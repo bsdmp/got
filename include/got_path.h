@@ -93,14 +93,6 @@ const struct got_error *got_pathlist_insert(struct got_pathlist_entry **,
 /* Free resources allocated for a path list. */
 void got_pathlist_free(struct got_pathlist_head *, int);
 
-/*
- * Parse gitignore(5)-style patterns from a FILE, one per line, into an
- * already-initialized path list: blank lines, "#" comments, and (for now)
- * "!"-negated patterns are skipped. If prefix is neither NULL nor empty,
- * each pattern is stored as "prefix/pattern"; otherwise it is stored
- * as-is. The FILE is read to EOF but not closed; that remains the
- * caller's responsibility.
- */
 const struct got_error *got_path_read_ignore_patterns(
     struct got_pathlist_head *, FILE *, const char *);
 

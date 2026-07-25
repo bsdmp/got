@@ -278,8 +278,16 @@ got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
 		if (linelen > 0 && line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
 
-		/* Skip blank lines, comments, and (for now) negated patterns. */
-		if (line[0] == '\0' || line[0] == '#' || line[0] == '!')
+		/* Skip blank lines. */
+		if (line[0] == '\0')
+			continue;
+
+		/* Git's ignores may contain comments. */
+		if (line[0] == '#')
+			continue;
+
+		/* Git's negated patterns are not (yet?) supported. */
+		if (line[0] == '!')
 			continue;
 
 		if (prefix != NULL && prefix[0] != '\0') {
