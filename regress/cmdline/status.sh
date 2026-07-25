@@ -875,6 +875,38 @@ test_status_multiple_gitignore_files() {
 	test_done "$testroot" "$ret"
 }
 
+test_status_cvsignore_and_gitignore_together() {
+	local testroot=`test_init status_cvsignore_and_gitignore_together`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	# .cvsignore and .gitignore both live in the worktree root here.
+	# Patterns from both files must be honored; a directory's ignore
+	# lists must not clobber each other.
+	echo "unversioned file" > $testroot/wt/foo
+	echo "unversioned file" > $testroot/wt/bar
+	echo "unversioned file" > $testroot/wt/baz
+	echo "foo" > $testroot/wt/.cvsignore
+	echo "bar" > $testroot/wt/.gitignore
+
+	echo '?  .cvsignore' > $testroot/stdout.expected
+	echo '?  .gitignore' >> $testroot/stdout.expected
+	echo '?  baz' >> $testroot/stdout.expected
+	(cd $testroot/wt && got status > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
 test_status_status_code() {
 	local testroot=`test_init status_status_code`
 
@@ -1247,6 +1279,7 @@ run_test test_status_gitignore_leading_slashes
 run_test test_status_gitignore_trailing_slashes
 run_test test_status_gitignore_comments
 run_test test_status_multiple_gitignore_files
+run_test test_status_cvsignore_and_gitignore_together
 run_test test_status_status_code
 run_test test_status_suppress
 run_test test_status_empty_file
