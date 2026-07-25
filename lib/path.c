@@ -269,7 +269,6 @@ got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
     const char *prefix)
 {
 	const struct got_error *err = NULL;
-	struct got_pathlist_entry *pe;
 	char *line = NULL, *pattern;
 	size_t linesize = 0;
 	ssize_t linelen;
@@ -303,7 +302,7 @@ got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
 			}
 		}
 
-		err = got_pathlist_insert(&pe, patterns, pattern, NULL);
+		err = got_pathlist_insert(NULL, pe, patterns, pattern, NULL);
 		if (err)
 			break;
 	}
