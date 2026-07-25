@@ -4273,7 +4273,7 @@ worktree_status(struct got_worktree *worktree, const char *path,
 		arg.cancel_arg = cancel_arg;
 		arg.report_unchanged = report_unchanged;
 		arg.no_ignores = no_ignores;
-		if (!no_ignores) {
+		if (!no_ignores && path[0] != '\0') {
 			err = add_ignores_from_parent_paths(&ignores,
 			    worktree->root_path, path);
 			if (err)

@@ -904,6 +904,38 @@ test_status_cvsignore_and_gitignore_together() {
 	test_done "$testroot" "$ret"
 }
 
+test_status_gitignore_root_pattern_applies_to_subdir() {
+	local testroot=`test_init status_gitignore_root_pattern_applies_to_subdir`
+
+	got checkout $testroot/repo $testroot/wt > /dev/null
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	# When 'got status' is scoped to a subdirectory, the directory walk
+	# starts at that subdirectory and never visits the worktree root, so
+	# a .gitignore at the root is not picked up by that walk. It must
+	# still be honored via the separate ancestor-directory lookup that
+	# runs before the walk starts.
+	echo "**/ignored.o" > $testroot/wt/.gitignore
+
+	echo "unversioned file" > $testroot/wt/epsilon/ignored.o
+	echo "unversioned file" > $testroot/wt/epsilon/unversioned
+
+	echo '?  epsilon/unversioned' > $testroot/stdout.expected
+	(cd $testroot/wt && got status epsilon > $testroot/stdout)
+
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
+
 test_status_status_code() {
 	local testroot=`test_init status_status_code`
 
@@ -1277,6 +1309,7 @@ run_test test_status_gitignore_trailing_slashes
 run_test test_status_gitignore_comments
 run_test test_status_multiple_gitignore_files
 run_test test_status_cvsignore_and_gitignore_together
+test_status_gitignore_root_pattern_applies_to_subdir
 run_test test_status_status_code
 run_test test_status_suppress
 run_test test_status_empty_file
