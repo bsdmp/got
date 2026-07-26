@@ -19,7 +19,7 @@ SRCS=		gotd.c auth.c repo_read.c repo_write.c log.c privsep_stub.c \
 		read_gitconfig.c read_gotconfig.c reference.c repository.c  \
 		hash.c sigs.c pack_create_io.c pollfd.c reference_parse.c \
 		repo_imsg.c pack_index.c session_read.c session_write.c \
-		object_qid.c notify.c commit_graph.c diffreg.c diff.c \
+		object_qid.c notify.c commit_graph.c cgraph.c diffreg.c diff.c \
 		diff_main.c diff_atomize_text.c diff_myers.c diff_output.c \
 		diff_output_plain.c diff_output_unidiff.c \
 		diff_output_edscript.c diff_patience.c repository_gitconfig.c

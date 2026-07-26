@@ -3,7 +3,7 @@
 .include "../got-version.mk"
 
 PROG=		got
-SRCS=		got.c blame.c commit_graph.c delta.c diff.c \
+SRCS=		got.c blame.c commit_graph.c cgraph.c delta.c diff.c \
 		diffreg.c error.c fileindex.c keyword.c object.c \
 		object_cache.c object_idset.c object_parse.c opentemp.c \
 		path.c pack.c privsep.c reference.c repository.c hash.c \

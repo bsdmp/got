@@ -65,6 +65,7 @@
 #include "got_lib_object_cache.h"
 #include "got_lib_repository.h"
 #include "got_lib_gotconfig.h"
+#include "got_lib_cgraph.h"
 
 #ifndef nitems
 #define nitems(_a) (sizeof(_a) / sizeof((_a)[0]))
@@ -119,6 +120,12 @@ enum got_hash_algorithm
 got_repo_get_object_format(struct got_repository *repo)
 {
 	return repo->algo;
+}
+
+struct got_cgraph *
+got_repo_get_cgraph(struct got_repository *repo)
+{
+	return repo->cgraph;
 }
 
 const char *
@@ -835,6 +842,15 @@ got_repo_open(struct got_repository **repop, const char *path,
 	}
 
 	err = got_repo_list_packidx(&repo->packidx_paths, repo);
+	if (err)
+		goto done;
+
+	/*
+	 * A commit-graph file is a pure accelerator: got never writes one,
+	 * and its absence or unusability must never prevent a repository
+	 * from being opened.
+	 */
+	err = got_cgraph_try_open(&repo->cgraph, repo->gitdir_fd, repo->algo);
 done:
 	if (err)
 		got_repo_close(repo);
@@ -873,6 +889,8 @@ got_repo_close(struct got_repository *repo)
 
 	free(repo->path);
 	free(repo->path_git_dir);
+
+	got_cgraph_close(repo->cgraph);
 
 	got_object_cache_close(&repo->objcache);
 	got_object_cache_close(&repo->treecache);

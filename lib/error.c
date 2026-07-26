@@ -254,6 +254,7 @@ static const struct got_error got_errors[] = {
 	{ GOT_ERR_MEDIA_TYPE,	"malformed media type" },
 	{ GOT_ERR_LOGOUT_FAILED, "logout failed" },
 	{ GOT_ERR_LOGIN_HINT, "login failed, see hint" },
+	{ GOT_ERR_BAD_CGRAPH, "bad commit-graph file" },
 };
 
 static struct got_custom_error {

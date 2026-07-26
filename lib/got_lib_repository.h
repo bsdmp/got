@@ -137,7 +137,17 @@ struct got_repository {
 
 	/* cleanup lockfile */
 	struct got_lockfile *cleanup_lock;
+
+	/*
+	 * Optional commit-graph file accelerator (see got_lib_cgraph.h).
+	 * NULL if objects/info/commit-graph does not exist or could not
+	 * be used; this is not an error condition, callers must always
+	 * be prepared to fall back to opening commit objects directly.
+	 */
+	struct got_cgraph *cgraph;
 };
+
+struct got_cgraph *got_repo_get_cgraph(struct got_repository *);
 
 const struct got_error*got_repo_cache_object(struct got_repository *,
     struct got_object_id *, struct got_object *);

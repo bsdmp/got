@@ -48,6 +48,7 @@
 #include "got_lib_pack.h"
 #include "got_lib_pack_create.h"
 #include "got_lib_repository.h"
+#include "got_lib_cgraph.h"
 
 static const struct got_error *
 get_base_object_id(struct got_object_id *base_id, struct got_packidx *packidx,
@@ -234,6 +235,7 @@ got_pack_paint_commits(int *ncolored, struct got_object_id_queue *ids, int nids,
 	struct got_commit_object *commit = NULL;
 	struct got_packidx *packidx = NULL;
 	struct got_pack *pack = NULL;
+	struct got_cgraph *cgraph = got_repo_get_cgraph(repo);
 	const struct got_object_id_queue *parents;
 	struct got_object_qid *qid = NULL;
 	int nqueued = nids, nskip = 0;
@@ -323,6 +325,48 @@ got_pack_paint_commits(int *ncolored, struct got_object_id_queue *ids, int nids,
 		    *ncolored, 0, 0, 0L, 0, 0, 0, 0, 0);
 		if (err)
 			break;
+
+		/*
+		 * If a commit-graph file covers this commit, fetch its
+		 * parents directly from the graph instead of opening the
+		 * commit object. This avoids a pack lookup plus zlib
+		 * inflate and parse for every commit during a full-history
+		 * walk. Commits made after the graph was generated are not
+		 * found here and fall through to the normal object-open path
+		 * below.
+		 */
+		if (cgraph != NULL) {
+			int cg_idx = got_cgraph_find(cgraph, &qid->id);
+			if (cg_idx != -1) {
+				struct got_object_id_queue cg_parents;
+				struct got_object_qid *pid;
+
+				STAILQ_INIT(&cg_parents);
+				err = got_cgraph_get_parent_ids(cgraph,
+				    cg_idx, &cg_parents);
+				if (err)
+					break;
+
+				color = (intptr_t)qid->data;
+				STAILQ_FOREACH(pid, &cg_parents, entry) {
+					err = got_pack_queue_commit_id(ids,
+					    &pid->id, color, repo);
+					if (err) {
+						got_object_id_queue_free(
+						    &cg_parents);
+						goto done;
+					}
+					nqueued++;
+					if (color == COLOR_SKIP)
+						nskip++;
+				}
+				got_object_id_queue_free(&cg_parents);
+
+				got_object_qid_free(qid);
+				qid = NULL;
+				continue;
+			}
+		}
 
 		err = got_object_open_as_commit(&commit, repo, &qid->id);
 		if (err)

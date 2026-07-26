@@ -203,6 +203,7 @@
 #define GOT_ERR_MEDIA_TYPE	195
 #define GOT_ERR_LOGOUT_FAILED	196
 #define GOT_ERR_LOGIN_HINT	197
+#define GOT_ERR_BAD_CGRAPH	198
 
 struct got_error {
         int code;
