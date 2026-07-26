@@ -3967,6 +3967,11 @@ The default limit on the number of commits traversed by
 .Cm got log .
 If set to zero, the limit is unbounded.
 This variable will be silently ignored if it is set to a non-numeric value.
+.It Ev GOT_TZ
+The time zone used for displaying dates, as accepted by
+.Xr tzset 3 .
+If not set, dates are displayed in UTC, regardless of the committer's or
+the local system's time zone.
 .It Ev VISUAL , EDITOR
 The editor spawned by
 .Cm got commit ,

@@ -60,6 +60,7 @@
 #include "got_path.h"
 #include "got_worktree.h"
 #include "got_keyword.h"
+#include "got_date.h"
 
 #ifndef MIN
 #define	MIN(_a,_b) ((_a) < (_b) ? (_a) : (_b))
@@ -2633,8 +2634,8 @@ draw_ymd(struct tog_view *view, time_t t, int *limit, int avail,
 	struct	tm tm;
 	char	datebuf[12];	/* YYYY-MM-DD + SPACE + NUL */
 
-	if (gmtime_r(&t, &tm) == NULL)
-		return got_error_from_errno("gmtime_r");
+	if (got_date_get_tm(&t, &tm) == NULL)
+		return got_error_from_errno("got_date_get_tm");
 	if (strftime(datebuf, sizeof(datebuf), "%F ", &tm) == 0)
 		return got_error(GOT_ERR_NO_SPACE);
 
@@ -5805,7 +5806,7 @@ get_datestr(time_t *time, char *datebuf)
 	struct tm mytm, *tm;
 	char *p, *s;
 
-	tm = gmtime_r(time, &mytm);
+	tm = got_date_get_tm(time, &mytm);
 	if (tm == NULL)
 		return NULL;
 	s = asctime_r(tm, datebuf);
@@ -5957,7 +5958,7 @@ write_commit_info(struct got_diff_line **lines, size_t *nlines,
     struct got_diffstat_cb_arg *dsa, FILE *outfile)
 {
 	const struct got_error *err = NULL;
-	char datebuf[26], *datestr;
+	char datebuf[26], zonebuf[GOT_TZ_ABBREV_MAX], *datestr;
 	struct got_commit_object *commit;
 	char *id_str = NULL, *logmsg = NULL, *s = NULL, *line;
 	time_t committer_time;
@@ -6023,7 +6024,10 @@ write_commit_info(struct got_diff_line **lines, size_t *nlines,
 	committer_time = got_object_commit_get_committer_time(commit);
 	datestr = get_datestr(&committer_time, datebuf);
 	if (datestr) {
-		n = fprintf(outfile, "date: %s UTC\n", datestr);
+		if (got_date_get_zoneabbrev(zonebuf, sizeof(zonebuf),
+		    committer_time) == NULL)
+			strlcpy(zonebuf, "UTC", sizeof(zonebuf));
+		n = fprintf(outfile, "date: %s %s\n", datestr, zonebuf);
 		if (n < 0) {
 			err = got_error_from_errno("fprintf");
 			goto done;
@@ -10336,8 +10340,8 @@ show_ref_view(struct tog_view *view)
 				got_object_tag_close(tag);
 			}
 			free(id);
-			if (gmtime_r(&t, &tm) == NULL)
-				return got_error_from_errno("gmtime_r");
+			if (got_date_get_tm(&t, &tm) == NULL)
+				return got_error_from_errno("got_date_get_tm");
 			if (strftime(ymd, sizeof(ymd), "%F  ", &tm) == 0)
 				return got_error(GOT_ERR_NO_SPACE);
 		}

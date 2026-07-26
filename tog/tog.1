@@ -880,6 +880,11 @@ work tree, use the repository path associated with this work tree.
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width TOG_VIEW_SPLIT_MODE
+.It Ev GOT_TZ
+The time zone used for displaying dates, as accepted by
+.Xr tzset 3 .
+If not set, dates are displayed in UTC, regardless of the committer's or
+the local system's time zone.
 .It Ev TOG_COLORS
 .Nm
 shows colorized output if this variable is set to a non-empty value.

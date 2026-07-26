@@ -18,6 +18,8 @@
 #include <sys/types.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include "got_date.h"
 
@@ -35,4 +37,35 @@ got_date_format_gmtoff(char *buf, size_t sz, time_t gmtoff)
 	h = (long long)gmtoff / 3600;
 	m = ((long long)gmtoff - h*3600) / 60;
 	snprintf(buf, sz, "%c%02lld%02lld", sign, h, m);
+}
+
+struct tm *
+got_date_get_tm(const time_t *t, struct tm *tm)
+{
+	static int tz_checked, have_tz;
+
+	if (!tz_checked) {
+		const char *tz = getenv("GOT_TZ");
+
+		if (tz != NULL && tz[0] != '\0' && setenv("TZ", tz, 1) == 0) {
+			tzset();
+			have_tz = 1;
+		}
+		tz_checked = 1;
+	}
+
+	return have_tz ? localtime_r(t, tm) : gmtime_r(t, tm);
+}
+
+char *
+got_date_get_zoneabbrev(char *buf, size_t sz, time_t t)
+{
+	struct tm tm;
+
+	if (got_date_get_tm(&t, &tm) == NULL)
+		return NULL;
+	if (strftime(buf, sz, "%Z", &tm) == 0)
+		return NULL;
+
+	return buf;
 }
