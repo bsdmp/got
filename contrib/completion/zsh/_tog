@@ -1,0 +1,112 @@
+#compdef tog
+
+# Zsh tab completion for tog 0.128-current.
+#
+# To use this file, copy it to ~/.zsh/completions/ and add to .zshrc:
+# fpath=(~/.zsh/completions/ $fpath)
+# autoload -U compinit && compinit
+#
+# To make it globally available place it (on OpenBSD) into:
+# /usr/local/share/zsh/site-functions
+
+_tog_branches() {
+	local branches
+
+	branches=$(got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//')
+	reply=(${(f)branches})
+}
+
+_tog_commit_or_keyword() {
+	local -a candidates
+	local name
+
+	candidates=(
+		':base'
+		':head'
+	)
+
+	_tog_branches
+	for name in $reply; do
+		candidates+=("$name")
+	done
+
+	compadd -a candidates
+}
+
+_tog_log() {
+	_arguments : \
+		'-b[display individual commits merged in from other branches]' \
+		'-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'*:path:_files'
+}
+
+_tog_diff() {
+	_arguments -s : \
+		'-a[treat file contents as ASCII text]' \
+		'-C[set the number of context lines shown in the diff]:context lines:' \
+		'*-c[show differences between commits]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'-s[show staged changes]' \
+		'-w[ignore whitespace-only changes]' \
+		'*:object or path:_files'
+}
+
+_tog_blame() {
+	_arguments : \
+		'-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'1:path:_files'
+}
+
+_tog_tree() {
+	_arguments : \
+		'-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'*:path:_files'
+}
+
+_tog_ref() {
+	_arguments : \
+		'-r[use the repository at the specified path]:repository path:_files -/'
+}
+
+_tog() {
+	local line state
+
+	_arguments -C \
+		'1: :->command' \
+		'*::arg:->args'
+
+	case $state in
+	command)
+		_values 'tog command' \
+			'log[display history of a repository]' \
+			'diff[display work tree changes or differences between commits]' \
+			'blame[display line-by-line history of a file]' \
+			'tree[display a repository tree listing]' \
+			'ref[display references in a repository]'
+		;;
+	args)
+		case $line[1] in
+		log)
+			_tog_log
+			;;
+		diff)
+			_tog_diff
+			;;
+		blame)
+			_tog_blame
+			;;
+		tree)
+			_tog_tree
+			;;
+		ref)
+			_tog_ref
+			;;
+		esac
+		;;
+	esac
+}
+
+_tog "$@"
