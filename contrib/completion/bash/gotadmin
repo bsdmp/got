@@ -1,0 +1,153 @@
+# Bash tab completion for gotadmin 0.128-current.
+#
+# To use this file, source it from your .bashrc, e.g.:
+# source /path/to/contrib/completion/bash/gotadmin
+#
+# To make it globally available (on OpenBSD) place it into:
+# /usr/local/share/bash-completion/completions/gotadmin
+
+__gotadmin_refs() {
+	got ref -l 2>/dev/null | awk '{print $1}' | sed 's/:$//'
+}
+
+__gotadmin_reply() {
+	COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+}
+
+__gotadmin_reply_dirs() {
+	COMPREPLY=( $(compgen -d -- "$cur") )
+}
+
+__gotadmin_reply_files() {
+	COMPREPLY=( $(compgen -f -- "$cur") )
+}
+
+__gotadmin_cmd_init() {
+	case $prev in
+	-A)
+		__gotadmin_reply "sha1 sha256"
+		return
+		;;
+	-b)
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __gotadmin_reply "-A -b"; return; }
+	__gotadmin_reply_dirs
+}
+
+__gotadmin_cmd_info() {
+	case $prev in
+	-r)
+		__gotadmin_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && __gotadmin_reply "-r"
+}
+
+__gotadmin_cmd_pack() {
+	case $prev in
+	-r)
+		__gotadmin_reply_dirs
+		return
+		;;
+	-x)
+		__gotadmin_reply "$(__gotadmin_refs)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __gotadmin_reply "-a -D -q -r -x"; return; }
+	__gotadmin_reply "$(__gotadmin_refs)"
+}
+
+__gotadmin_cmd_indexpack() {
+	__gotadmin_reply_files
+}
+
+__gotadmin_cmd_listpack() {
+	[[ $cur == -* ]] && { __gotadmin_reply "-h -s"; return; }
+	__gotadmin_reply_files
+}
+
+__gotadmin_cmd_cleanup() {
+	case $prev in
+	-r)
+		__gotadmin_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && __gotadmin_reply "-a -n -p -q -r"
+}
+
+__gotadmin_cmd_dump() {
+	case $prev in
+	-r)
+		__gotadmin_reply_dirs
+		return
+		;;
+	-x)
+		__gotadmin_reply "$(__gotadmin_refs)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __gotadmin_reply "-q -r -x"; return; }
+	__gotadmin_reply "$(__gotadmin_refs)"
+}
+
+__gotadmin_cmd_load() {
+	case $prev in
+	-l)
+		__gotadmin_reply_files
+		return
+		;;
+	-r)
+		__gotadmin_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && __gotadmin_reply "-l -n -q -r"
+}
+
+_gotadmin() {
+	local cur prev cmd
+
+	COMPREPLY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+
+	if ((COMP_CWORD == 1)); then
+		__gotadmin_reply "init info pack ix ls cl dump load"
+		return
+	fi
+
+	cmd=${COMP_WORDS[1]}
+	case $cmd in
+	init)
+		__gotadmin_cmd_init
+		;;
+	info)
+		__gotadmin_cmd_info
+		;;
+	pack)
+		__gotadmin_cmd_pack
+		;;
+	indexpack|ix)
+		__gotadmin_cmd_indexpack
+		;;
+	listpack|ls)
+		__gotadmin_cmd_listpack
+		;;
+	cleanup|cl)
+		__gotadmin_cmd_cleanup
+		;;
+	dump)
+		__gotadmin_cmd_dump
+		;;
+	load)
+		__gotadmin_cmd_load
+		;;
+	esac
+}
+
+complete -F _gotadmin gotadmin

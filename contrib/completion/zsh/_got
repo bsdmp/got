@@ -78,18 +78,6 @@ _got_remote_name() {
 	compadd -a candidates
 }
 
-_got_ssh_config_hosts() {
-	local hosts
-	local -a candidates
-
-	[[ -r ~/.ssh/config ]] || return
-
-	# awk loop is needed for "Host host1 host2 host3" syntax, grep to exclude "Host pattern* pattern?"
-	hosts=$(grep -iE '^[[:space:]]*host(name)?[[:space:]]' ~/.ssh/config | awk '{for (i=2;i<=NF;i++) print $i}' | grep -vE '[*?]')
-	candidates=(${(f)hosts})
-	compadd -a candidates
-}
-
 _got_tags() {
 	local tags
 
@@ -238,7 +226,7 @@ _got_clone() {
 		'-a[fetch all branches from the remote repository]' \
 		'*-b[fetch the specified branch]:branch:' \
 		'-i[specify an SSH identity file]:identity file:_files' \
-		'-J[specify a jumphost for SSH connections]:jumphost:_got_ssh_config_hosts' \
+		'-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
 		'-l[list branches and tags available for fetching and exit]' \
 		'-m[create the cloned repository as a mirror]' \
 		'-q[suppress progress reporting]' \
@@ -401,7 +389,7 @@ _got_fetch() {
 		'*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name' \
 		'-d[delete branches and tags no longer present on the remote]' \
 		'-i[specify an SSH identity file]:identity file:_files' \
-		'-J[specify a jumphost for SSH connections]:jumphost:_got_ssh_config_hosts' \
+		'-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
 		'-l[list branches and tags available for fetching and exit]' \
 		'-q[suppress progress reporting]' \
 		'*-R[fetch an additional reference]:reference:' \
@@ -502,7 +490,7 @@ _got_send() {
 		'*-d[delete the specified branch on the remote repository]:branch:_got_branch_name' \
 		'-f[force the server to overwrite existing branches or tags]' \
 		'-i[specify an SSH identity file]:identity file:_files' \
-		'-J[specify a jumphost for SSH connections]:jumphost:_got_ssh_config_hosts' \
+		'-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
 		'-q[suppress progress reporting]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
 		'-T[send all tags from the local repository]' \

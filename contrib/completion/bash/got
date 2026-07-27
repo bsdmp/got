@@ -1,0 +1,627 @@
+# Bash tab completion for got 0.128-current, for 'got <tab>' we complete only
+# aliases, to not mess with 'got up<tab>' which matches both 'up' alias and
+# 'update', probably most people use only aliases in their interactive sessions
+# anyway, but if the user has typed 'got update <tab>' we will catch that and
+# help them too.
+#
+# To use this file, source it from your .bashrc, e.g.:
+# source /path/to/contrib/completion/bash/got
+#
+# To make it globally available (on OpenBSD) place it into:
+# /usr/local/share/bash-completion/completions/got
+
+__got_branches() {
+	got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//'
+}
+
+__got_worktree_repository_path() {
+	local dir=$PWD
+
+	while true; do
+		if [[ -f $dir/.got/repository ]]; then
+			cat "$dir/.got/repository"
+			return
+		fi
+		[[ $dir == / ]] && return
+		dir=$(dirname "$dir")
+	done
+}
+
+__got_remotes() {
+	local repo
+
+	repo=$(__got_worktree_repository_path)
+	[[ -n $repo && -f $repo/got.conf ]] || return
+
+	grep -E '^remote' "$repo/got.conf" | awk -F'"' '{print $2}'
+}
+
+__got_ssh_config_hosts() {
+	[[ -r ~/.ssh/config ]] || return
+
+	# awk loop is needed for "Host host1 host2 host3" syntax, grep to
+	# exclude "Host pattern* pattern?"
+	grep -iE '^[[:space:]]*host(name)?[[:space:]]' ~/.ssh/config \
+		| awk '{for (i=2;i<=NF;i++) print $i}' | grep -vE '[*?]'
+}
+
+# use the bash-completion package's ssh host completion when it is loaded
+# (it also knows about known_hosts, not just ~/.ssh/config), otherwise fall
+# back to our own minimal ~/.ssh/config parser
+__got_reply_ssh_hosts() {
+	if declare -F _comp_compgen_known_hosts >/dev/null 2>&1; then
+		_comp_compgen_known_hosts -a -- "$cur"
+	elif declare -F _known_hosts >/dev/null 2>&1; then
+		_known_hosts -a
+	else
+		__got_reply "$(__got_ssh_config_hosts)"
+	fi
+}
+
+__got_tags() {
+	got ref -l refs/tags 2>/dev/null | awk '{print $1}' | sed 's#^refs/tags/##; s/:$//'
+}
+
+__got_refs() {
+	got ref -l 2>/dev/null | awk '{print $1}' | sed 's/:$//'
+}
+
+__got_commit_keywords() {
+	printf '%s\n' ':base' ':head'
+	__got_branches
+}
+
+__got_status_codes() {
+	# backslash-escape ~ so compgen -W does not tilde-expand it
+	printf '%s\n' M A D C '!' '\~' '?' m N
+}
+
+__got_remove_status_codes() {
+	printf '%s\n' M '!' '?'
+}
+
+# path can contain spaces, so use cut on character positions rather than awk
+# field splitting
+__got_status_paths() {
+	got status 2>/dev/null | grep "$1" | cut -c4-
+}
+
+__got_add_paths() {
+	__got_status_paths '^?'
+}
+
+__got_revert_paths() {
+	__got_status_paths '^[MADC!~m]'
+}
+
+__got_stage_paths() {
+	__got_status_paths '^[AMD]'
+}
+
+__got_unstage_paths() {
+	__got_status_paths '^.[AMD]'
+}
+
+__got_reply() {
+	COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+}
+
+__got_reply_dirs() {
+	COMPREPLY=( $(compgen -d -- "$cur") )
+}
+
+__got_reply_files() {
+	COMPREPLY=( $(compgen -f -- "$cur") )
+}
+
+__got_cmd_init() {
+	case $prev in
+	-A)
+		__got_reply "sha1 sha256"
+		return
+		;;
+	-b)
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-A -b"; return; }
+	__got_reply_dirs
+}
+
+__got_cmd_import() {
+	case $prev in
+	-b|-I|-m)
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-b -I -m -r"; return; }
+	__got_reply_dirs
+}
+
+__got_cmd_clone() {
+	case $prev in
+	-b)
+		__got_reply "$(__got_branches)"
+		return
+		;;
+	-i)
+		__got_reply_files
+		return
+		;;
+	-J)
+		__got_reply_ssh_hosts
+		return
+		;;
+	-R)
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-a -b -i -J -l -m -q -R -v"; return; }
+	__got_reply_dirs
+}
+
+__got_cmd_checkout() {
+	case $prev in
+	-b)
+		__got_reply "$(__got_branches)"
+		return
+		;;
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-p)
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-b -c -E -p -q"; return; }
+	__got_reply_dirs
+}
+
+__got_cmd_update() {
+	case $prev in
+	-b)
+		__got_reply "$(__got_branches)"
+		return
+		;;
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-b -c -q"; return; }
+	__got_reply_files
+}
+
+__got_cmd_log() {
+	case $prev in
+	-C|-l|-S)
+		return
+		;;
+	-c|-x)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-b -C -c -d -l -P -p -R -r -S -s -t -x"; return; }
+	__got_reply_files
+}
+
+__got_cmd_diff() {
+	case $prev in
+	-C)
+		return
+		;;
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-a -C -c -d -P -r -s -w"; return; }
+	__got_reply_files
+}
+
+__got_cmd_blame() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-c -r"; return; }
+	__got_reply_files
+}
+
+__got_cmd_tree() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-c -i -R -r"; return; }
+	__got_reply_files
+}
+
+__got_cmd_status() {
+	case $prev in
+	-S|-s)
+		__got_reply "$(__got_status_codes)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-I -S -s"; return; }
+	__got_reply_files
+}
+
+__got_cmd_ref() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	-s)
+		__got_reply "$(__got_refs)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-c -d -l -r -s -t"; return; }
+	__got_reply "$(__got_refs)"
+}
+
+__got_cmd_branch() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-d)
+		__got_reply "$(__got_branches)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && __got_reply "-c -d -l -n -r -t"
+}
+
+__got_cmd_tag() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-m)
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	-S)
+		__got_reply_files
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-c -l -m -r -S -s -V -v"; return; }
+	__got_reply "$(__got_tags)"
+}
+
+__got_cmd_add() {
+	[[ $cur == -* ]] && { __got_reply "-I -R"; return; }
+	__got_reply "$(__got_add_paths)"
+}
+
+__got_cmd_remove() {
+	case $prev in
+	-s)
+		__got_reply "$(__got_remove_status_codes)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-f -I -k -R -s"; return; }
+	__got_reply_files
+}
+
+__got_cmd_patch() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-p)
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-c -n -p -R"; return; }
+	__got_reply_files
+}
+
+__got_cmd_revert() {
+	case $prev in
+	-F)
+		__got_reply_files
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-F -p -R"; return; }
+	__got_reply "$(__got_revert_paths)"
+}
+
+__got_cmd_commit() {
+	case $prev in
+	-A|-m)
+		return
+		;;
+	-F)
+		__got_reply_files
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-A -C -F -m -N -n -S"; return; }
+	__got_reply_files
+}
+
+__got_cmd_fetch() {
+	case $prev in
+	-b)
+		__got_reply "$(__got_branches)"
+		return
+		;;
+	-i)
+		__got_reply_files
+		return
+		;;
+	-J)
+		__got_reply_ssh_hosts
+		return
+		;;
+	-R)
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-a -b -d -i -J -l -q -R -r -t -v -X"; return; }
+	__got_reply "$(__got_remotes)"
+}
+
+__got_cmd_cherrypick() {
+	[[ $cur == -* ]] && { __got_reply "-l -X"; return; }
+	__got_reply "$(__got_commit_keywords)"
+}
+
+__got_cmd_backout() {
+	[[ $cur == -* ]] && { __got_reply "-l -X"; return; }
+	__got_reply "$(__got_commit_keywords)"
+}
+
+__got_cmd_rebase() {
+	[[ $cur == -* ]] && { __got_reply "-a -c -C -l -X"; return; }
+	__got_reply "$(__got_branches)"
+}
+
+__got_cmd_histedit() {
+	case $prev in
+	-F)
+		__got_reply_files
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-a -c -C -d -e -F -f -l -m -X"; return; }
+	__got_reply "$(__got_branches)"
+}
+
+__got_cmd_integrate() {
+	__got_reply "$(__got_branches)"
+}
+
+__got_cmd_merge() {
+	[[ $cur == -* ]] && { __got_reply "-a -c -C -M -n"; return; }
+	__got_reply "$(__got_branches)"
+}
+
+__got_cmd_stage() {
+	case $prev in
+	-F)
+		__got_reply_files
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-F -l -p -S"; return; }
+	__got_reply "$(__got_stage_paths)"
+}
+
+__got_cmd_unstage() {
+	case $prev in
+	-F)
+		__got_reply_files
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-F -p"; return; }
+	__got_reply "$(__got_unstage_paths)"
+}
+
+__got_cmd_cat() {
+	case $prev in
+	-c)
+		__got_reply "$(__got_commit_keywords)"
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-c -P -r"; return; }
+	__got_reply_files
+}
+
+__got_cmd_info() {
+	__got_reply_files
+}
+
+__got_cmd_send() {
+	case $prev in
+	-b|-d)
+		__got_reply "$(__got_branches)"
+		return
+		;;
+	-i)
+		__got_reply_files
+		return
+		;;
+	-J)
+		__got_reply_ssh_hosts
+		return
+		;;
+	-r)
+		__got_reply_dirs
+		return
+		;;
+	-t)
+		__got_reply "$(__got_tags)"
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __got_reply "-a -b -d -f -i -J -q -r -T -t -v"; return; }
+	__got_reply "$(__got_remotes)"
+}
+
+_got() {
+	local cur prev cmd
+
+	COMPREPLY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+
+	if ((COMP_CWORD == 1)); then
+		__got_reply "init im cl fe co up log di bl tr st ref br tag add rm pa rv ci se cy bo rb he ig mg sg ug cat info"
+		return
+	fi
+
+	cmd=${COMP_WORDS[1]}
+	case $cmd in
+	init)
+		__got_cmd_init
+		;;
+	import|im)
+		__got_cmd_import
+		;;
+	clone|cl)
+		__got_cmd_clone
+		;;
+	fetch|fe)
+		__got_cmd_fetch
+		;;
+	checkout|co)
+		__got_cmd_checkout
+		;;
+	update|up)
+		__got_cmd_update
+		;;
+	log)
+		__got_cmd_log
+		;;
+	diff|di)
+		__got_cmd_diff
+		;;
+	blame|bl)
+		__got_cmd_blame
+		;;
+	tree|tr)
+		__got_cmd_tree
+		;;
+	status|st)
+		__got_cmd_status
+		;;
+	ref)
+		__got_cmd_ref
+		;;
+	branch|br)
+		__got_cmd_branch
+		;;
+	tag)
+		__got_cmd_tag
+		;;
+	add)
+		__got_cmd_add
+		;;
+	remove|rm)
+		__got_cmd_remove
+		;;
+	patch|pa)
+		__got_cmd_patch
+		;;
+	revert|rv)
+		__got_cmd_revert
+		;;
+	commit|ci)
+		__got_cmd_commit
+		;;
+	send|se)
+		__got_cmd_send
+		;;
+	cherrypick|cy)
+		__got_cmd_cherrypick
+		;;
+	backout|bo)
+		__got_cmd_backout
+		;;
+	rebase|rb)
+		__got_cmd_rebase
+		;;
+	histedit|he)
+		__got_cmd_histedit
+		;;
+	integrate|ig)
+		__got_cmd_integrate
+		;;
+	merge|mg)
+		__got_cmd_merge
+		;;
+	stage|sg)
+		__got_cmd_stage
+		;;
+	unstage|ug)
+		__got_cmd_unstage
+		;;
+	cat)
+		__got_cmd_cat
+		;;
+	info)
+		__got_cmd_info
+		;;
+	esac
+}
+
+complete -F _got got

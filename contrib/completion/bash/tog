@@ -1,0 +1,135 @@
+# Bash tab completion for tog 0.128-current.
+#
+# To use this file, source it from your .bashrc, e.g.:
+# source /path/to/contrib/completion/bash/tog
+#
+# To make it globally available (on OpenBSD) place it into:
+# /usr/local/share/bash-completion/completions/tog
+
+__tog_branches() {
+	got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//'
+}
+
+__tog_commit_keywords() {
+	printf '%s\n' ':base' ':head'
+	__tog_branches
+}
+
+__tog_reply() {
+	COMPREPLY=( $(compgen -W "$1" -- "$cur") )
+}
+
+__tog_reply_dirs() {
+	COMPREPLY=( $(compgen -d -- "$cur") )
+}
+
+__tog_reply_files() {
+	COMPREPLY=( $(compgen -f -- "$cur") )
+}
+
+__tog_cmd_log() {
+	case $prev in
+	-c)
+		__tog_reply "$(__tog_commit_keywords)"
+		return
+		;;
+	-r)
+		__tog_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __tog_reply "-b -c -r"; return; }
+	__tog_reply_files
+}
+
+__tog_cmd_diff() {
+	case $prev in
+	-C)
+		return
+		;;
+	-c)
+		__tog_reply "$(__tog_commit_keywords)"
+		return
+		;;
+	-r)
+		__tog_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __tog_reply "-a -C -c -r -s -w"; return; }
+	__tog_reply_files
+}
+
+__tog_cmd_blame() {
+	case $prev in
+	-c)
+		__tog_reply "$(__tog_commit_keywords)"
+		return
+		;;
+	-r)
+		__tog_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __tog_reply "-c -r"; return; }
+	__tog_reply_files
+}
+
+__tog_cmd_tree() {
+	case $prev in
+	-c)
+		__tog_reply "$(__tog_commit_keywords)"
+		return
+		;;
+	-r)
+		__tog_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && { __tog_reply "-c -r"; return; }
+	__tog_reply_files
+}
+
+__tog_cmd_ref() {
+	case $prev in
+	-r)
+		__tog_reply_dirs
+		return
+		;;
+	esac
+	[[ $cur == -* ]] && __tog_reply "-r"
+}
+
+_tog() {
+	local cur prev cmd
+
+	COMPREPLY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+
+	if ((COMP_CWORD == 1)); then
+		__tog_reply "log diff blame tree ref"
+		return
+	fi
+
+	cmd=${COMP_WORDS[1]}
+	case $cmd in
+	log)
+		__tog_cmd_log
+		;;
+	diff)
+		__tog_cmd_diff
+		;;
+	blame)
+		__tog_cmd_blame
+		;;
+	tree)
+		__tog_cmd_tree
+		;;
+	ref)
+		__tog_cmd_ref
+		;;
+	esac
+}
+
+complete -F _tog tog
