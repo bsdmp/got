@@ -101,11 +101,8 @@ _gotadmin() {
 			'init[create a new empty repository]' \
 			'info[display information about a repository]' \
 			'pack[generate a new pack file and pack index]' \
-			'indexpack[create a pack index for a pack file]' \
 			'ix[create a pack index for a pack file (alias for indexpack)]' \
-			'listpack[list the contents of a pack file]' \
 			'ls[list the contents of a pack file (alias for listpack)]' \
-			'cleanup[repack and purge unreferenced objects]' \
 			'cl[repack and purge unreferenced objects (alias for cleanup)]' \
 			'dump[dump repository contents in Git bundle format]' \
 			'load[load a Git bundle into a repository]'
