@@ -111,7 +111,7 @@ _got_ref_name() {
 	compadd -a candidates
 }
 
-_got_commit_or_keyword() {
+_got_branches_or_keywords() {
 	local -a candidates
 	local name
 
@@ -234,7 +234,7 @@ _got_clone() {
 _got_checkout() {
 	_arguments : \
 		'-b[check out the specified branch]:branch:_got_branch_name' \
-		'-c[check out the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[check out the specified commit]:commit:_got_branches_or_keywords' \
 		'-E[proceed even if the work tree directory is not empty]' \
 		'-p[restrict the work tree to the specified path prefix]:path prefix:' \
 		'-q[silence progress output]' \
@@ -245,7 +245,7 @@ _got_checkout() {
 _got_update() {
 	_arguments : \
 		'-b[switch the work tree to the specified branch]:branch:_got_branch_name' \
-		'-c[update the work tree to the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[update the work tree to the specified commit]:commit:_got_branches_or_keywords' \
 		'-q[silence progress output]' \
 		'(-b)*:path:_files'
 }
@@ -254,7 +254,7 @@ _got_log() {
 	_arguments : \
 		'-b[display commits merged in from other branches]' \
 		'-C[set the number of diff context lines shown with -p]:context lines:' \
-		'-c[start traversing history at the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[start traversing history at the specified commit]:commit:_got_branches_or_keywords' \
 		'(-s)-d[display diffstat of changes in each commit]' \
 		'-l[limit history traversal to the given number of commits]:limit:' \
 		'(-s)-P[display paths changed in each commit]' \
@@ -264,7 +264,7 @@ _got_log() {
 		'-S[only show commits matching the given search pattern]:search pattern:' \
 		'(-d -p -P)-s[display a short one-line summary of each commit]' \
 		'-t[display commits in topological order]' \
-		'-x[stop traversing history after the specified commit]:commit:_got_commit_or_keyword' \
+		'-x[stop traversing history after the specified commit]:commit:_got_branches_or_keywords' \
 		'*:path:_files'
 }
 
@@ -272,7 +272,7 @@ _got_diff() {
 	_arguments : \
 		'-a[treat file contents as ASCII text]' \
 		'-C[set the number of context lines shown in the diff]:context lines:' \
-		'(-P)*-c[show differences between commits]:commit:_got_commit_or_keyword' \
+		'(-P)*-c[show differences between commits]:commit:_got_branches_or_keywords' \
 		'-d[display diffstat of changes]' \
 		'(-c)-P[interpret all arguments as paths]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
@@ -283,14 +283,14 @@ _got_diff() {
 
 _got_blame() {
 	_arguments : \
-		'-c[start traversing history at the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[start traversing history at the specified commit]:commit:_got_branches_or_keywords' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
 		'1:path:_files'
 }
 
 _got_tree() {
 	_arguments : \
-		'-c[list files and directories as they appear in the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[list files and directories as they appear in the specified commit]:commit:_got_branches_or_keywords' \
 		'-i[show object IDs of files and directories]' \
 		'-R[recurse into sub-directories]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
@@ -299,7 +299,7 @@ _got_tree() {
 
 _got_ref() {
 	_arguments : \
-		'(-d -l -s)-c[create or change the reference to point at the specified object]:object:_got_commit_or_keyword' \
+		'(-d -l -s)-c[create or change the reference to point at the specified object]:object:_got_branches_or_keywords' \
 		'(-c -l -s)-d[delete the reference]' \
 		'(-c -d -s)-l[list references]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
@@ -310,7 +310,7 @@ _got_ref() {
 
 _got_branch() {
 	_arguments : \
-		'-c[make the new branch point at the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[make the new branch point at the specified commit]:commit:_got_branches_or_keywords' \
 		'-d[delete the specified branch]:branch:_got_branch_name' \
 		'-l[list all existing branches]' \
 		'-n[do not switch and update the work tree after creating a branch]' \
@@ -321,7 +321,7 @@ _got_branch() {
 
 _got_tag() {
 	_arguments -s : \
-		'-c[make the new tag point at the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[make the new tag point at the specified commit]:commit:_got_branches_or_keywords' \
 		'-l[list all existing tags]' \
 		'-m[use the specified tag message]:message:' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
@@ -351,7 +351,7 @@ _got_remove() {
 
 _got_patch() {
 	_arguments : \
-		'-c[use the specified commit as a merge base]:commit:_got_commit_or_keyword' \
+		'-c[use the specified commit as a merge base]:commit:_got_branches_or_keywords' \
 		'-n[do not modify the work tree]' \
 		'-p[strip the given number of leading path components]:strip count:' \
 		'-R[reverse the patch before applying it]' \
@@ -399,14 +399,14 @@ _got_cherrypick() {
 	_arguments : \
 		'(-X)-l[list log messages recorded by cherrypick operations]' \
 		'(-l)-X[delete log messages created by previous cherrypick operations]' \
-		'1::commit:_got_commit_or_keyword'
+		'1::commit:_got_branches_or_keywords'
 }
 
 _got_backout() {
 	_arguments : \
 		'(-X)-l[list log messages recorded by backout operations]' \
 		'(-l)-X[delete log messages created by previous backout operations]' \
-		'1::commit:_got_commit_or_keyword'
+		'1::commit:_got_branches_or_keywords'
 }
 
 _got_rebase() {
@@ -467,7 +467,7 @@ _got_unstage() {
 
 _got_cat() {
 	_arguments : \
-		'-c[look up paths in the specified commit]:commit:_got_commit_or_keyword' \
+		'-c[look up paths in the specified commit]:commit:_got_branches_or_keywords' \
 		'-P[interpret all arguments as paths]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
 		'*:object or path:_files'
