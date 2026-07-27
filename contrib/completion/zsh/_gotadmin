@@ -81,11 +81,11 @@ _gotadmin_dump() {
 
 _gotadmin_load() {
 	_arguments : \
-		'-l[list references available for loading from the bundle and exit]:bundle path:_files' \
-		'-n[verify the bundle without installing any data]' \
+		'(-n)-l[list references available for loading from the bundle and exit]:bundle path:_files' \
+		'(-l)-n[verify the bundle without installing any data]' \
 		'-q[suppress progress reporting]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
-		'*:reference:'
+		'(-l)*:reference:'
 }
 
 _gotadmin() {

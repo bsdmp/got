@@ -13,11 +13,6 @@
 # To make it globally available place it (on OpenBSD) into:
 # /usr/local/share/zsh/site-functions
 
-# TODO: this file can be improved with options excluding logic, for example
-# '(-t)-T[send all tags from the local repository]' in _got_send can be used to
-# make zsh remove '-t' from completion if -T is used, but let's keep it simple
-# for now
-
 _got_branches() {
 	local branches
 
@@ -223,14 +218,14 @@ _got_import() {
 
 _got_clone() {
 	_arguments -s : \
-		'-a[fetch all branches from the remote repository]' \
-		'*-b[fetch the specified branch]:branch:' \
-		'-i[specify an SSH identity file]:identity file:_files' \
-		'-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
-		'-l[list branches and tags available for fetching and exit]' \
-		'-m[create the cloned repository as a mirror]' \
+		'(-b -l)-a[fetch all branches from the remote repository]' \
+		'(-a -l)*-b[fetch the specified branch]:branch:' \
+		'(-l)-i[specify an SSH identity file]:identity file:_files' \
+		'(-l)-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
+		'(-a -b -i -J -m -R)-l[list branches and tags available for fetching and exit]' \
+		'(-l)-m[create the cloned repository as a mirror]' \
 		'-q[suppress progress reporting]' \
-		'*-R[fetch an additional reference]:reference:' \
+		'(-l)*-R[fetch an additional reference]:reference:' \
 		'*-v[verbose mode]' \
 		'1:repository URL:' \
 		'2::directory:_files -/'
@@ -252,7 +247,7 @@ _got_update() {
 		'-b[switch the work tree to the specified branch]:branch:_got_branch_name' \
 		'-c[update the work tree to the specified commit]:commit:_got_commit_or_keyword' \
 		'-q[silence progress output]' \
-		'*:path:_files'
+		'(-b)*:path:_files'
 }
 
 _got_log() {
@@ -260,14 +255,14 @@ _got_log() {
 		'-b[display commits merged in from other branches]' \
 		'-C[set the number of diff context lines shown with -p]:context lines:' \
 		'-c[start traversing history at the specified commit]:commit:_got_commit_or_keyword' \
-		'-d[display diffstat of changes in each commit]' \
+		'(-s)-d[display diffstat of changes in each commit]' \
 		'-l[limit history traversal to the given number of commits]:limit:' \
-		'-P[display paths changed in each commit]' \
-		'-p[display the patch of modifications in each commit]' \
+		'(-s)-P[display paths changed in each commit]' \
+		'(-s)-p[display the patch of modifications in each commit]' \
 		'-R[display commits in reverse order]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
 		'-S[only show commits matching the given search pattern]:search pattern:' \
-		'-s[display a short one-line summary of each commit]' \
+		'(-d -p -P)-s[display a short one-line summary of each commit]' \
 		'-t[display commits in topological order]' \
 		'-x[stop traversing history after the specified commit]:commit:_got_commit_or_keyword' \
 		'*:path:_files'
@@ -277,9 +272,9 @@ _got_diff() {
 	_arguments : \
 		'-a[treat file contents as ASCII text]' \
 		'-C[set the number of context lines shown in the diff]:context lines:' \
-		'*-c[show differences between commits]:commit:_got_commit_or_keyword' \
+		'(-P)*-c[show differences between commits]:commit:_got_commit_or_keyword' \
 		'-d[display diffstat of changes]' \
-		'-P[interpret all arguments as paths]' \
+		'(-c)-P[interpret all arguments as paths]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
 		'-s[show staged changes]' \
 		'-w[ignore whitespace-only changes]' \
@@ -304,11 +299,11 @@ _got_tree() {
 
 _got_ref() {
 	_arguments : \
-		'-c[create or change the reference to point at the specified object]:object:_got_commit_or_keyword' \
-		'-d[delete the reference]' \
-		'-l[list references]' \
+		'(-d -l -s)-c[create or change the reference to point at the specified object]:object:_got_commit_or_keyword' \
+		'(-c -l -s)-d[delete the reference]' \
+		'(-c -d -s)-l[list references]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
-		'-s[create or change a symbolic reference to point at the specified reference]:reference:_got_ref_name' \
+		'(-c -d -l)-s[create or change a symbolic reference to point at the specified reference]:reference:_got_ref_name' \
 		'-t[sort listed references by modification time (requires -l)]' \
 		'1::reference name:_got_ref_name'
 }
@@ -375,8 +370,8 @@ _got_commit() {
 	_arguments : \
 		'-A[set author information for the new commit]:author:' \
 		'-C[allow committing files in conflicted status]' \
-		'-F[use the prepared log message stored at the specified path]:log message file:_files' \
-		'-m[use the specified log message]:message:' \
+		'(-m)-F[use the prepared log message stored at the specified path]:log message file:_files' \
+		'(-F)-m[use the specified log message]:message:' \
 		'-N[do not open the commit message in an editor]' \
 		'-n[do not generate a diff of to-be-committed changes]' \
 		'-S[allow symbolic links which point outside of version control]' \
@@ -385,58 +380,58 @@ _got_commit() {
 
 _got_fetch() {
 	_arguments -s : \
-		'-a[fetch all branches from the remote repository]' \
-		'*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name' \
-		'-d[delete branches and tags no longer present on the remote]' \
-		'-i[specify an SSH identity file]:identity file:_files' \
-		'-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
-		'-l[list branches and tags available for fetching and exit]' \
+		'(-b -l -X)-a[fetch all branches from the remote repository]' \
+		'(-a -l -X)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name' \
+		'(-l -X)-d[delete branches and tags no longer present on the remote]' \
+		'(-l -X)-i[specify an SSH identity file]:identity file:_files' \
+		'(-l -X)-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
+		'(-a -b -d -i -J -R -t -X)-l[list branches and tags available for fetching and exit]' \
 		'-q[suppress progress reporting]' \
-		'*-R[fetch an additional reference]:reference:' \
+		'(-l -X)*-R[fetch an additional reference]:reference:' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
-		'-t[replace existing tags]' \
+		'(-l -X)-t[replace existing tags]' \
 		'*-v[verbose mode]' \
-		'-X[delete all references for the given remote repository]' \
+		'(-a -b -d -i -J -l -R -t)-X[delete all references for the given remote repository]' \
 		'1::remote repository:_got_remote_name'
 }
 
 _got_cherrypick() {
 	_arguments : \
-		'-l[list log messages recorded by cherrypick operations]' \
-		'-X[delete log messages created by previous cherrypick operations]' \
+		'(-X)-l[list log messages recorded by cherrypick operations]' \
+		'(-l)-X[delete log messages created by previous cherrypick operations]' \
 		'1::commit:_got_commit_or_keyword'
 }
 
 _got_backout() {
 	_arguments : \
-		'-l[list log messages recorded by backout operations]' \
-		'-X[delete log messages created by previous backout operations]' \
+		'(-X)-l[list log messages recorded by backout operations]' \
+		'(-l)-X[delete log messages created by previous backout operations]' \
 		'1::commit:_got_commit_or_keyword'
 }
 
 _got_rebase() {
 	_arguments : \
-		'-a[abort an interrupted rebase operation]' \
-		'-c[continue an interrupted rebase operation]' \
-		'-C[allow files in conflicted status when continuing a rebase (requires -c)]' \
-		'-l[list past rebase operations]' \
-		'-X[delete backups of past rebase operations]' \
-		'1::branch:_got_branch_name'
+		'(-C -c -l -X)-a[abort an interrupted rebase operation]' \
+		'(-a -l -X)-c[continue an interrupted rebase operation]' \
+		'(-a -l -X)-C[allow files in conflicted status when continuing a rebase (requires -c)]' \
+		'(-a -C -c -X)-l[list past rebase operations]' \
+		'(-a -C -c -l)-X[delete backups of past rebase operations]' \
+		'(-a -c)1::branch:_got_branch_name'
 }
 
 _got_histedit() {
 	_arguments : \
-		'-a[abort an interrupted histedit operation]' \
-		'-c[continue an interrupted histedit operation]' \
-		'-C[allow files in conflicted status when continuing (requires -c)]' \
-		'-d[drop all commits]' \
-		'-e[interrupt for editing after merging each commit]' \
-		'-F[use the specified histedit script]:histedit script:_files' \
-		'-f[fold all commits into a single commit]' \
-		'-l[list past histedit operations]' \
-		'-m[edit log messages only]' \
-		'-X[delete backups of past histedit operations]' \
-		'1::branch:_got_branch_name'
+		'(-c -C -d -e -F -f -l -m -X)-a[abort an interrupted histedit operation]' \
+		'(-a -d -e -F -f -l -m -X)-c[continue an interrupted histedit operation]' \
+		'(-a -d -e -F -f -l -m -X)-C[allow files in conflicted status when continuing (requires -c)]' \
+		'(-a -c -C -e -F -f -l -m -X)-d[drop all commits]' \
+		'(-a -c -C -d -F -f -l -m -X)-e[interrupt for editing after merging each commit]' \
+		'(-a -c -C -d -e -f -l -m -X)-F[use the specified histedit script]:histedit script:_files' \
+		'(-a -c -C -d -e -F -l -m -X)-f[fold all commits into a single commit]' \
+		'(-a -c -C -d -e -F -f -m -X)-l[list past histedit operations]' \
+		'(-a -c -C -d -e -F -f -l -X)-m[edit log messages only]' \
+		'(-a -c -C -d -e -F -f -l -m)-X[delete backups of past histedit operations]' \
+		'(-a -c -d -e -f -m)1::branch:_got_branch_name'
 }
 
 _got_integrate() {
@@ -446,12 +441,12 @@ _got_integrate() {
 
 _got_merge() {
 	_arguments : \
-		'-a[abort an interrupted merge operation]' \
-		'-c[continue an interrupted merge operation]' \
-		'-C[allow files in conflicted status when continuing (requires -c)]' \
-		'-M[create a merge commit even if the branches have not diverged]' \
-		'-n[merge changes but do not create a merge commit immediately]' \
-		'1::branch:_got_branch_name'
+		'(-c -C -M -n)-a[abort an interrupted merge operation]' \
+		'(-a -M -n)-c[continue an interrupted merge operation]' \
+		'(-a -M -n)-C[allow files in conflicted status when continuing (requires -c)]' \
+		'(-a -c -C)-M[create a merge commit even if the branches have not diverged]' \
+		'(-a -c -C)-n[merge changes but do not create a merge commit immediately]' \
+		'(-a -c)1::branch:_got_branch_name'
 }
 
 _got_stage() {
@@ -485,16 +480,16 @@ _got_info() {
 
 _got_send() {
 	_arguments -s : \
-		'-a[send all branches from the local repository]' \
-		'*-b[send the specified branch]:branch:_got_branch_name' \
+		'(-b)-a[send all branches from the local repository]' \
+		'(-a)*-b[send the specified branch]:branch:_got_branch_name' \
 		'*-d[delete the specified branch on the remote repository]:branch:_got_branch_name' \
 		'-f[force the server to overwrite existing branches or tags]' \
 		'-i[specify an SSH identity file]:identity file:_files' \
 		'-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
 		'-q[suppress progress reporting]' \
 		'-r[use the repository at the specified path]:repository path:_files -/' \
-		'-T[send all tags from the local repository]' \
-		'*-t[send the specified tag]:tag:_got_tag_name' \
+		'(-t)-T[send all tags from the local repository]' \
+		'(-T)*-t[send the specified tag]:tag:_got_tag_name' \
 		'*-v[verbose mode]' \
 		'1::remote repository:_got_remote_name'
 }
@@ -502,8 +497,8 @@ _got_send() {
 _got_status() {
 	_arguments : \
 		'-I[show unversioned files even if they match an ignore pattern]' \
-		'-S[suppress files matching the given status codes]:status codes:_got_status_codes' \
-		'-s[only show files matching the given status codes]:status codes:_got_status_codes' \
+		'(-s)-S[suppress files matching the given status codes]:status codes:_got_status_codes' \
+		'(-S)-s[only show files matching the given status codes]:status codes:_got_status_codes' \
 		'*:path:_files'
 }
 
