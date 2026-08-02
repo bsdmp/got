@@ -38,6 +38,13 @@ _got_worktree_repository_path() {
   reply=(${repo:+$repo})
 }
 
+_got_worktree_path() {
+  local root
+
+  root=$(got info 2>/dev/null | sed -n 's/^work tree: //p')
+  reply=(${root:+$root})
+}
+
 _got_remotes() {
   local repo remotes
 
@@ -117,12 +124,27 @@ _got_remove_status_codes() {
     '?[unversioned file (deletion is permanent)]'
 }
 
-_got_add_paths() {
-  local paths
+_got_status_paths() {
+  local root prefix paths
+
+  # 'got status' always prints paths relative to the work tree root,
+  # but 'got' subcommands taking a path argument (like the callers of
+  # this function) expect paths relative to $PWD, same as normal file
+  # completion; restrict to $PWD with the '.' argument and strip the
+  # $PWD-relative-to-root prefix from the results to match
+  _got_worktree_path
+  root=$reply[1]
+  prefix=
+  [[ -n $root && $PWD == ${root}/* ]] && prefix=${PWD#$root/}/
 
   # use substr because path can contain spaces, same below
-  paths=$(got status 2>/dev/null | grep '^?' | awk '{print substr($0, 4)}')
+  paths=$(got status . 2>/dev/null | grep "$1" | awk '{print substr($0, 4)}')
   reply=(${(f)paths})
+  [[ -n $prefix ]] && reply=(${(@)reply#$prefix})
+}
+
+_got_add_paths() {
+  _got_status_paths '^?'
 }
 
 _got_add_files() {
@@ -130,17 +152,13 @@ _got_add_files() {
 
   _got_add_paths
   _description files expl 'file'
-  compadd "$@" "$expl[@]" -a reply
+  compadd "$@" "$expl[@]" -f -a reply
 }
 
 _got_revert_paths() {
-  local paths
-
-  # XXX: only these status codes make sense for 'got rv', same technique
-  # for other commands with other codes below, substr() is used because
-  # filenames can contain spaces
-  paths=$(got status 2>/dev/null | grep '^[MADC!~m]' | awk '{print substr($0, 4)}')
-  reply=(${(f)paths})
+  # XXX: only these status codes make sense for 'got rv', same
+  # technique for other commands with other codes below
+  _got_status_paths '^[MADC!~m]'
 }
 
 _got_revert_files() {
@@ -148,14 +166,11 @@ _got_revert_files() {
 
   _got_revert_paths
   _description files expl 'file'
-  compadd "$@" "$expl[@]" -a reply
+  compadd "$@" "$expl[@]" -f -a reply
 }
 
 _got_stage_paths() {
-  local paths
-
-  paths=$(got status 2>/dev/null | grep '^[AMD]' | awk '{print substr($0, 4)}')
-  reply=(${(f)paths})
+  _got_status_paths '^[AMD]'
 }
 
 _got_stage_files() {
@@ -163,14 +178,11 @@ _got_stage_files() {
 
   _got_stage_paths
   _description files expl 'file'
-  compadd "$@" "$expl[@]" -a reply
+  compadd "$@" "$expl[@]" -f -a reply
 }
 
 _got_unstage_paths() {
-  local paths
-
-  paths=$(got status 2>/dev/null | grep '^.[AMD]' | awk '{print substr($0, 4)}')
-  reply=(${(f)paths})
+  _got_status_paths '^.[AMD]'
 }
 
 _got_unstage_files() {
@@ -178,7 +190,7 @@ _got_unstage_files() {
 
   _got_unstage_paths
   _description files expl 'file'
-  compadd "$@" "$expl[@]" -a reply
+  compadd "$@" "$expl[@]" -f -a reply
 }
 
 _got_init() {
