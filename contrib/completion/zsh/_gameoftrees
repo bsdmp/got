@@ -1,21 +1,5 @@
 #compdef got gotadmin tog
 
-# Zsh tab completion for the Game of Trees (got) suite: got, gotadmin, tog.
-#
-# For 'got <tab>' we complete only aliases, to not mess with 'got up<tab>'
-# which matches both the 'up' alias and 'update' -- probably most people use
-# only aliases in their interactive sessions anyway, but if the user has
-# typed 'got update -<tab>' we will catch that and help them too. gotadmin
-# and tog subcommands are always completed in full since gotadmin has only a
-# few aliases and tog has none.
-#
-# To use this file, copy it to ~/.zsh/completions/ and add to .zshrc:
-# fpath=(~/.zsh/completions/ $fpath)
-# autoload -U compinit && compinit
-#
-# To make it globally available place it (on OpenBSD) into:
-# /usr/local/share/zsh/site-functions
-
 _got_branches() {
   local branches
 
@@ -126,11 +110,7 @@ _got_remove_status_codes() {
 _got_status_paths() {
   local root prefix paths
 
-  # 'got status' always prints paths relative to the work tree root,
-  # but 'got' subcommands taking a path argument (like the callers of
-  # this function) expect paths relative to $PWD, same as normal file
-  # completion; restrict to $PWD with the '.' argument and strip the
-  # $PWD-relative-to-root prefix from the results to match
+  # 'got' subcommands taking a path argument expect paths relative to $PWD
   _got_worktree_path
   root=$reply[1]
   prefix=
@@ -143,6 +123,7 @@ _got_status_paths() {
 }
 
 _got_add_paths() {
+  # only these status codes make sense for 'got add', same technique below
   _got_status_paths '^?'
 }
 
@@ -155,8 +136,6 @@ _got_add_files() {
 }
 
 _got_revert_paths() {
-  # XXX: only these status codes make sense for 'got rv', same
-  # technique for other commands with other codes below
   _got_status_paths '^[MADC!~m]'
 }
 
