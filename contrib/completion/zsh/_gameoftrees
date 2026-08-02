@@ -35,20 +35,19 @@ _got_worktree_repository_path() {
   local repo
 
   repo=$(got info 2>/dev/null | sed -n 's/^repository: //p')
-  reply=(${repo:+$repo})
+  reply=($repo)
 }
 
 _got_worktree_path() {
   local root
 
   root=$(got info 2>/dev/null | sed -n 's/^work tree: //p')
-  reply=(${root:+$root})
+  reply=($root)
 }
 
 _got_remotes() {
   local repo remotes
 
-  reply=()
   _got_worktree_repository_path
   repo=$reply[1]
   reply=()
@@ -637,21 +636,6 @@ _got() {
   esac
 }
 
-_gotadmin_refs() {
-  local refs
-
-  refs=$(got ref -l 2>/dev/null | awk '{print $1}' | sed 's/:$//')
-  reply=(${(f)refs})
-}
-
-_gotadmin_ref_names() {
-  local -a expl
-
-  _gotadmin_refs
-  _description references expl 'reference'
-  compadd "$@" "$expl[@]" -a reply
-}
-
 _gotadmin-init() {
   _arguments : \
     '-A[configure the hashing algorithm used for object IDs]:hashing algorithm:(sha1 sha256)' \
@@ -670,8 +654,8 @@ _gotadmin-pack() {
     '-D[force the use of ref-delta representation]' \
     '-q[suppress progress reporting]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
-    '*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_names' \
-    '*:reference:_gotadmin_ref_names'
+    '*-x[exclude objects reachable via the specified reference]:reference:_got_ref_names' \
+    '*:reference:_got_ref_names'
 }
 
 _gotadmin-indexpack() {
@@ -699,8 +683,8 @@ _gotadmin-dump() {
   _arguments : \
     '-q[suppress progress reporting]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
-    '*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_names' \
-    '*:reference:_gotadmin_ref_names'
+    '*-x[exclude objects reachable via the specified reference]:reference:_got_ref_names' \
+    '*:reference:_got_ref_names'
 }
 
 _gotadmin-load() {
