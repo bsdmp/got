@@ -92,20 +92,9 @@ _got_ref_names() {
 }
 
 _got_branches_or_keywords() {
-  local -a candidates
-  local name
-
-  candidates=(
-    ':base'
-    ':head'
-  )
-
-  _got_branches
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
+  _alternative \
+    'keywords:keyword:(:base :head)' \
+    'branches:: _got_branch_names'
 }
 
 _got_status_codes() {
@@ -757,34 +746,10 @@ _gotadmin() {
   esac
 }
 
-_tog_branches() {
-  local branches
-
-  branches=$(got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//')
-  reply=(${(f)branches})
-}
-
-_tog_branches_or_keywords() {
-  local -a candidates
-  local name
-
-  candidates=(
-    ':base'
-    ':head'
-  )
-
-  _tog_branches
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
-}
-
 _tog_log() {
   _arguments : \
     '-b[display individual commits merged in from other branches]' \
-    '-c[start traversing history at the specified commit]:commit:_tog_branches_or_keywords' \
+    '-c[start traversing history at the specified commit]:commit:_got_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '*:path:_files'
 }
@@ -793,7 +758,7 @@ _tog_diff() {
   _arguments -s : \
     '-a[treat file contents as ASCII text]' \
     '-C[set the number of context lines shown in the diff]:context lines:' \
-    '*-c[show differences between commits]:commit:_tog_branches_or_keywords' \
+    '*-c[show differences between commits]:commit:_got_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '-s[show staged changes]' \
     '-w[ignore whitespace-only changes]' \
@@ -802,14 +767,14 @@ _tog_diff() {
 
 _tog_blame() {
   _arguments : \
-    '-c[start traversing history at the specified commit]:commit:_tog_branches_or_keywords' \
+    '-c[start traversing history at the specified commit]:commit:_got_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '1:path:_files'
 }
 
 _tog_tree() {
   _arguments : \
-    '-c[start traversing history at the specified commit]:commit:_tog_branches_or_keywords' \
+    '-c[start traversing history at the specified commit]:commit:_got_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '*:path:_files'
 }
