@@ -93,6 +93,9 @@ const struct got_error *got_pathlist_insert(struct got_pathlist_entry **,
 /* Free resources allocated for a path list. */
 void got_pathlist_free(struct got_pathlist_head *, int);
 
+const struct got_error *got_path_read_ignore_patterns(
+    struct got_pathlist_head *, FILE *, const char *);
+
 /* Attempt to create a directory at a given path. */
 const struct got_error *got_path_mkdir(const char *);
 

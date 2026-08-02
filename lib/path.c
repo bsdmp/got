@@ -264,6 +264,56 @@ got_pathlist_free(struct got_pathlist_head *pathlist, int freemask)
 	}
 }
 
+/* Parse gitignore(5)-style ignore patterns, one per line, from f. */
+const struct got_error *
+got_path_read_ignore_patterns(struct got_pathlist_head *patterns, FILE *f,
+    const char *prefix)
+{
+	const struct got_error *err = NULL;
+	char *line = NULL, *pattern;
+	size_t linesize = 0;
+	ssize_t linelen;
+
+	while ((linelen = getline(&line, &linesize, f)) != -1) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
+
+		/* Skip blank lines. */
+		if (line[0] == '\0')
+			continue;
+
+		/* Git's ignores may contain comments. */
+		if (line[0] == '#')
+			continue;
+
+		/* Git's negated patterns are not (yet?) supported. */
+		if (line[0] == '!')
+			continue;
+
+		if (prefix != NULL && prefix[0] != '\0') {
+			if (asprintf(&pattern, "%s/%s", prefix, line) == -1) {
+				err = got_error_from_errno("asprintf");
+				break;
+			}
+		} else {
+			pattern = strdup(line);
+			if (pattern == NULL) {
+				err = got_error_from_errno("strdup");
+				break;
+			}
+		}
+
+		err = got_pathlist_insert(NULL, patterns, pattern, NULL);
+		if (err)
+			break;
+	}
+	if (err == NULL && ferror(f))
+		err = got_error_from_errno("getline");
+
+	free(line);
+	return err;
+}
+
 static const struct got_error *
 make_parent_dirs(const char *abspath)
 {
