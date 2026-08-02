@@ -629,6 +629,9 @@ _got() {
     info)
       _got-info
       ;;
+    *)
+      _default
+      ;;
     esac
     ;;
   esac
@@ -755,6 +758,9 @@ _gotadmin() {
     load)
       _gotadmin-load
       ;;
+    *)
+      _default
+      ;;
     esac
     ;;
   esac
@@ -831,6 +837,9 @@ _tog() {
       ;;
     ref)
       _tog-ref
+      ;;
+    *)
+      _default
       ;;
     esac
     ;;
