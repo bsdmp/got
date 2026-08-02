@@ -32,17 +32,10 @@ _got_branch_names() {
 }
 
 _got_worktree_repository_path() {
-  local dir=$PWD
+  local repo
 
-  reply=()
-  while true; do
-    if [[ -f $dir/.got/repository ]]; then
-      reply=("$(<$dir/.got/repository)")
-      return
-    fi
-    [[ $dir == / ]] && return
-    dir=${dir:h}
-  done
+  repo=$(got info 2>/dev/null | sed -n 's/^repository: //p')
+  reply=(${repo:+$repo})
 }
 
 _got_remotes() {
