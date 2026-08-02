@@ -23,7 +23,7 @@ _got_branches() {
   reply=(${(f)branches})
 }
 
-_got_branch_name() {
+_got_branch_names() {
   local -a candidates
   local name
 
@@ -64,7 +64,7 @@ _got_remotes() {
   reply=(${(f)remotes})
 }
 
-_got_remote_name() {
+_got_remote_names() {
   local -a candidates
   local name
 
@@ -83,7 +83,7 @@ _got_tags() {
   reply=(${(f)tags})
 }
 
-_got_tag_name() {
+_got_tag_names() {
   local -a candidates
   local name
 
@@ -102,7 +102,7 @@ _got_refs() {
   reply=(${(f)refs})
 }
 
-_got_ref_name() {
+_got_ref_names() {
   local -a candidates
   local name
 
@@ -236,7 +236,7 @@ _got_clone() {
 
 _got_checkout() {
   _arguments : \
-    '-b[check out the specified branch]:branch:_got_branch_name' \
+    '-b[check out the specified branch]:branch:_got_branch_names' \
     '-c[check out the specified commit]:commit:_got_branches_or_keywords' \
     '-E[proceed even if the work tree directory is not empty]' \
     '-p[restrict the work tree to the specified path prefix]:path prefix:' \
@@ -247,7 +247,7 @@ _got_checkout() {
 
 _got_update() {
   _arguments : \
-    '-b[switch the work tree to the specified branch]:branch:_got_branch_name' \
+    '-b[switch the work tree to the specified branch]:branch:_got_branch_names' \
     '-c[update the work tree to the specified commit]:commit:_got_branches_or_keywords' \
     '-q[silence progress output]' \
     '(-b)*:path:_files'
@@ -306,15 +306,15 @@ _got_ref() {
     '(-c -l -s)-d[delete the reference]' \
     '(-c -d -s)-l[list references]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
-    '(-c -d -l)-s[create or change a symbolic reference to point at the specified reference]:reference:_got_ref_name' \
+    '(-c -d -l)-s[create or change a symbolic reference to point at the specified reference]:reference:_got_ref_names' \
     '-t[sort listed references by modification time (requires -l)]' \
-    '1::reference name:_got_ref_name'
+    '1::reference name:_got_ref_names'
 }
 
 _got_branch() {
   _arguments : \
     '-c[make the new branch point at the specified commit]:commit:_got_branches_or_keywords' \
-    '-d[delete the specified branch]:branch:_got_branch_name' \
+    '-d[delete the specified branch]:branch:_got_branch_names' \
     '-l[list all existing branches]' \
     '-n[do not switch and update the work tree after creating a branch]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
@@ -332,7 +332,7 @@ _got_tag() {
     '-s[display a short one-line summary of each tag (requires -l)]' \
     '-V[verify tag object signatures]' \
     '*-v[verbose mode]' \
-    '1::tag name:_got_tag_name'
+    '1::tag name:_got_tag_names'
 }
 
 _got_add() {
@@ -384,7 +384,7 @@ _got_commit() {
 _got_fetch() {
   _arguments -s : \
     '(-b -l -X)-a[fetch all branches from the remote repository]' \
-    '(-a -l -X)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_name' \
+    '(-a -l -X)*-b[fetch the specified branch from the remote repository]:branch:_got_branch_names' \
     '(-l -X)-d[delete branches and tags no longer present on the remote]' \
     '(-l -X)-i[specify an SSH identity file]:identity file:_files' \
     '(-l -X)-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
@@ -395,7 +395,7 @@ _got_fetch() {
     '(-l -X)-t[replace existing tags]' \
     '*-v[verbose mode]' \
     '(-a -b -d -i -J -l -R -t)-X[delete all references for the given remote repository]' \
-    '1::remote repository:_got_remote_name'
+    '1::remote repository:_got_remote_names'
 }
 
 _got_cherrypick() {
@@ -419,7 +419,7 @@ _got_rebase() {
     '(-a -l -X)-C[allow files in conflicted status when continuing a rebase (requires -c)]' \
     '(-a -C -c -X)-l[list past rebase operations]' \
     '(-a -C -c -l)-X[delete backups of past rebase operations]' \
-    '(-a -c)1::branch:_got_branch_name'
+    '(-a -c)1::branch:_got_branch_names'
 }
 
 _got_histedit() {
@@ -434,12 +434,12 @@ _got_histedit() {
     '(-a -c -C -d -e -F -f -m -X)-l[list past histedit operations]' \
     '(-a -c -C -d -e -F -f -l -X)-m[edit log messages only]' \
     '(-a -c -C -d -e -F -f -l -m)-X[delete backups of past histedit operations]' \
-    '(-a -c -d -e -f -m)1::branch:_got_branch_name'
+    '(-a -c -d -e -f -m)1::branch:_got_branch_names'
 }
 
 _got_integrate() {
   _arguments : \
-    '1:branch:_got_branch_name'
+    '1:branch:_got_branch_names'
 }
 
 _got_merge() {
@@ -449,7 +449,7 @@ _got_merge() {
     '(-a -M -n)-C[allow files in conflicted status when continuing (requires -c)]' \
     '(-a -c -C)-M[create a merge commit even if the branches have not diverged]' \
     '(-a -c -C)-n[merge changes but do not create a merge commit immediately]' \
-    '(-a -c)1::branch:_got_branch_name'
+    '(-a -c)1::branch:_got_branch_names'
 }
 
 _got_stage() {
@@ -484,17 +484,17 @@ _got_info() {
 _got_send() {
   _arguments -s : \
     '(-b)-a[send all branches from the local repository]' \
-    '(-a)*-b[send the specified branch]:branch:_got_branch_name' \
-    '*-d[delete the specified branch on the remote repository]:branch:_got_branch_name' \
+    '(-a)*-b[send the specified branch]:branch:_got_branch_names' \
+    '*-d[delete the specified branch on the remote repository]:branch:_got_branch_names' \
     '-f[force the server to overwrite existing branches or tags]' \
     '-i[specify an SSH identity file]:identity file:_files' \
     '-J[specify a jumphost for SSH connections]:jumphost:_ssh_hosts' \
     '-q[suppress progress reporting]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '(-t)-T[send all tags from the local repository]' \
-    '(-T)*-t[send the specified tag]:tag:_got_tag_name' \
+    '(-T)*-t[send the specified tag]:tag:_got_tag_names' \
     '*-v[verbose mode]' \
-    '1::remote repository:_got_remote_name'
+    '1::remote repository:_got_remote_names'
 }
 
 _got_status() {
@@ -650,7 +650,7 @@ _gotadmin_refs() {
   reply=(${(f)refs})
 }
 
-_gotadmin_ref_name() {
+_gotadmin_ref_names() {
   local -a candidates
   local name
 
@@ -680,8 +680,8 @@ _gotadmin_pack() {
     '-D[force the use of ref-delta representation]' \
     '-q[suppress progress reporting]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
-    '*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_name' \
-    '*:reference:_gotadmin_ref_name'
+    '*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_names' \
+    '*:reference:_gotadmin_ref_names'
 }
 
 _gotadmin_indexpack() {
@@ -709,8 +709,8 @@ _gotadmin_dump() {
   _arguments : \
     '-q[suppress progress reporting]' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
-    '*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_name' \
-    '*:reference:_gotadmin_ref_name'
+    '*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_names' \
+    '*:reference:_gotadmin_ref_names'
 }
 
 _gotadmin_load() {
@@ -779,7 +779,7 @@ _tog_branches() {
   reply=(${(f)branches})
 }
 
-_tog_commit_or_keyword() {
+_tog_branches_or_keywords() {
   local -a candidates
   local name
 
@@ -799,7 +799,7 @@ _tog_commit_or_keyword() {
 _tog_log() {
   _arguments : \
     '-b[display individual commits merged in from other branches]' \
-    '-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+    '-c[start traversing history at the specified commit]:commit:_tog_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '*:path:_files'
 }
@@ -808,7 +808,7 @@ _tog_diff() {
   _arguments -s : \
     '-a[treat file contents as ASCII text]' \
     '-C[set the number of context lines shown in the diff]:context lines:' \
-    '*-c[show differences between commits]:commit:_tog_commit_or_keyword' \
+    '*-c[show differences between commits]:commit:_tog_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '-s[show staged changes]' \
     '-w[ignore whitespace-only changes]' \
@@ -817,14 +817,14 @@ _tog_diff() {
 
 _tog_blame() {
   _arguments : \
-    '-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+    '-c[start traversing history at the specified commit]:commit:_tog_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '1:path:_files'
 }
 
 _tog_tree() {
   _arguments : \
-    '-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+    '-c[start traversing history at the specified commit]:commit:_tog_branches_or_keywords' \
     '-r[use the repository at the specified path]:repository path:_files -/' \
     '*:path:_files'
 }
