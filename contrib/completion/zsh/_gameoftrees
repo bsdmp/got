@@ -24,15 +24,11 @@ _got_branches() {
 }
 
 _got_branch_names() {
-  local -a candidates
-  local name
+  local -a expl
 
   _got_branches
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
+  _description branches expl 'branch'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_worktree_repository_path() {
@@ -65,15 +61,11 @@ _got_remotes() {
 }
 
 _got_remote_names() {
-  local -a candidates
-  local name
+  local -a expl
 
   _got_remotes
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
+  _description remotes expl 'remote'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_tags() {
@@ -84,15 +76,11 @@ _got_tags() {
 }
 
 _got_tag_names() {
-  local -a candidates
-  local name
+  local -a expl
 
   _got_tags
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
+  _description tags expl 'tag'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_refs() {
@@ -103,15 +91,11 @@ _got_refs() {
 }
 
 _got_ref_names() {
-  local -a candidates
-  local name
+  local -a expl
 
   _got_refs
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
+  _description references expl 'reference'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_branches_or_keywords() {
@@ -160,8 +144,11 @@ _got_add_paths() {
 }
 
 _got_add_files() {
+  local -a expl
+
   _got_add_paths
-  compadd -a reply
+  _description files expl 'file'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_revert_paths() {
@@ -175,8 +162,11 @@ _got_revert_paths() {
 }
 
 _got_revert_files() {
+  local -a expl
+
   _got_revert_paths
-  compadd -a reply
+  _description files expl 'file'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_stage_paths() {
@@ -187,8 +177,11 @@ _got_stage_paths() {
 }
 
 _got_stage_files() {
+  local -a expl
+
   _got_stage_paths
-  compadd -a reply
+  _description files expl 'file'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_unstage_paths() {
@@ -199,8 +192,11 @@ _got_unstage_paths() {
 }
 
 _got_unstage_files() {
+  local -a expl
+
   _got_unstage_paths
-  compadd -a reply
+  _description files expl 'file'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _got_init() {
@@ -651,15 +647,11 @@ _gotadmin_refs() {
 }
 
 _gotadmin_ref_names() {
-  local -a candidates
-  local name
+  local -a expl
 
   _gotadmin_refs
-  for name in $reply; do
-    candidates+=("$name")
-  done
-
-  compadd -a candidates
+  _description references expl 'reference'
+  compadd "$@" "$expl[@]" -a reply
 }
 
 _gotadmin_init() {
