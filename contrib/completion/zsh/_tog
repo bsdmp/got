@@ -1,14 +1,5 @@
 #compdef tog
 
-# Zsh tab completion for tog 0.128-current.
-#
-# To use this file, copy it to ~/.zsh/completions/ and add to .zshrc:
-# fpath=(~/.zsh/completions/ $fpath)
-# autoload -U compinit && compinit
-#
-# To make it globally available place it (on OpenBSD) into:
-# /usr/local/share/zsh/site-functions
-
 _tog_branches() {
 	local branches
 
