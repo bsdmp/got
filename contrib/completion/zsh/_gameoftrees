@@ -1,4 +1,20 @@
-#compdef got
+#compdef got gotadmin tog
+
+# Zsh tab completion for the Game of Trees (got) suite: got, gotadmin, tog.
+#
+# For 'got <tab>' we complete only aliases, to not mess with 'got up<tab>'
+# which matches both the 'up' alias and 'update' -- probably most people use
+# only aliases in their interactive sessions anyway, but if the user has
+# typed 'got update -<tab>' we will catch that and help them too. gotadmin
+# and tog subcommands are always completed in full since gotadmin has only a
+# few aliases and tog has none.
+#
+# To use this file, copy it to ~/.zsh/completions/ and add to .zshrc:
+# fpath=(~/.zsh/completions/ $fpath)
+# autoload -U compinit && compinit
+#
+# To make it globally available place it (on OpenBSD) into:
+# /usr/local/share/zsh/site-functions
 
 _got_branches() {
 	local branches
@@ -627,4 +643,247 @@ _got() {
 	esac
 }
 
-_got "$@"
+_gotadmin_refs() {
+	local refs
+
+	refs=$(got ref -l 2>/dev/null | awk '{print $1}' | sed 's/:$//')
+	reply=(${(f)refs})
+}
+
+_gotadmin_ref_name() {
+	local -a candidates
+	local name
+
+	_gotadmin_refs
+	for name in $reply; do
+		candidates+=("$name")
+	done
+
+	compadd -a candidates
+}
+
+_gotadmin_init() {
+	_arguments : \
+		'-A[configure the hashing algorithm used for object IDs]:hashing algorithm:(sha1 sha256)' \
+		'-b[make HEAD point at the specified branch instead of main]:branch:' \
+		'1:repository path:_files -/'
+}
+
+_gotadmin_info() {
+	_arguments : \
+		'-r[use the repository at the specified path]:repository path:_files -/'
+}
+
+_gotadmin_pack() {
+	_arguments : \
+		'-a[add objects even if already packed in a different pack file]' \
+		'-D[force the use of ref-delta representation]' \
+		'-q[suppress progress reporting]' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_name' \
+		'*:reference:_gotadmin_ref_name'
+}
+
+_gotadmin_indexpack() {
+	_arguments : \
+		'1:pack file path:_files'
+}
+
+_gotadmin_listpack() {
+	_arguments : \
+		'-h[show object sizes in human-readable form]' \
+		'-s[display statistics about the pack file]' \
+		'1:pack file path:_files'
+}
+
+_gotadmin_cleanup() {
+	_arguments : \
+		'-a[delete all redundant loose and packed objects]' \
+		'-n[perform a trial run without removing any files]' \
+		'-p[remove pack index files lacking a corresponding pack file]' \
+		'-q[suppress progress reporting and disk space summary]' \
+		'-r[use the repository at the specified path]:repository path:_files -/'
+}
+
+_gotadmin_dump() {
+	_arguments : \
+		'-q[suppress progress reporting]' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'*-x[exclude objects reachable via the specified reference]:reference:_gotadmin_ref_name' \
+		'*:reference:_gotadmin_ref_name'
+}
+
+_gotadmin_load() {
+	_arguments : \
+		'(-n)-l[list references available for loading from the bundle and exit]:bundle path:_files' \
+		'(-l)-n[verify the bundle without installing any data]' \
+		'-q[suppress progress reporting]' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'(-l)*:reference:'
+}
+
+_gotadmin() {
+	local line state
+
+	_arguments -C \
+		'1: :->command' \
+		'*::arg:->args'
+
+	case $state in
+	command)
+		_values 'gotadmin command' \
+			'init[create a new empty repository]' \
+			'info[display information about a repository]' \
+			'pack[generate a new pack file and pack index]' \
+			'ix[create a pack index for a pack file (alias for indexpack)]' \
+			'ls[list the contents of a pack file (alias for listpack)]' \
+			'cl[repack and purge unreferenced objects (alias for cleanup)]' \
+			'dump[dump repository contents in Git bundle format]' \
+			'load[load a Git bundle into a repository]'
+		;;
+	args)
+		case $line[1] in
+		init)
+			_gotadmin_init
+			;;
+		info)
+			_gotadmin_info
+			;;
+		pack)
+			_gotadmin_pack
+			;;
+		indexpack|ix)
+			_gotadmin_indexpack
+			;;
+		listpack|ls)
+			_gotadmin_listpack
+			;;
+		cleanup|cl)
+			_gotadmin_cleanup
+			;;
+		dump)
+			_gotadmin_dump
+			;;
+		load)
+			_gotadmin_load
+			;;
+		esac
+		;;
+	esac
+}
+
+_tog_branches() {
+	local branches
+
+	branches=$(got br -l 2>/dev/null | awk '{print $(NF-1)}' | sed 's/:$//')
+	reply=(${(f)branches})
+}
+
+_tog_commit_or_keyword() {
+	local -a candidates
+	local name
+
+	candidates=(
+		':base'
+		':head'
+	)
+
+	_tog_branches
+	for name in $reply; do
+		candidates+=("$name")
+	done
+
+	compadd -a candidates
+}
+
+_tog_log() {
+	_arguments : \
+		'-b[display individual commits merged in from other branches]' \
+		'-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'*:path:_files'
+}
+
+_tog_diff() {
+	_arguments -s : \
+		'-a[treat file contents as ASCII text]' \
+		'-C[set the number of context lines shown in the diff]:context lines:' \
+		'*-c[show differences between commits]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'-s[show staged changes]' \
+		'-w[ignore whitespace-only changes]' \
+		'*:object or path:_files'
+}
+
+_tog_blame() {
+	_arguments : \
+		'-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'1:path:_files'
+}
+
+_tog_tree() {
+	_arguments : \
+		'-c[start traversing history at the specified commit]:commit:_tog_commit_or_keyword' \
+		'-r[use the repository at the specified path]:repository path:_files -/' \
+		'*:path:_files'
+}
+
+_tog_ref() {
+	_arguments : \
+		'-r[use the repository at the specified path]:repository path:_files -/'
+}
+
+_tog() {
+	local line state
+
+	_arguments -C \
+		'1: :->command' \
+		'*::arg:->args'
+
+	case $state in
+	command)
+		_values 'tog command' \
+			'log[display history of a repository]' \
+			'diff[display work tree changes or differences between commits]' \
+			'blame[display line-by-line history of a file]' \
+			'tree[display a repository tree listing]' \
+			'ref[display references in a repository]'
+		;;
+	args)
+		case $line[1] in
+		log)
+			_tog_log
+			;;
+		diff)
+			_tog_diff
+			;;
+		blame)
+			_tog_blame
+			;;
+		tree)
+			_tog_tree
+			;;
+		ref)
+			_tog_ref
+			;;
+		esac
+		;;
+	esac
+}
+
+_gameoftrees() {
+	case $service in
+	(got)
+		_got "$@"
+		;;
+	(gotadmin)
+		_gotadmin "$@"
+		;;
+	(tog)
+		_tog "$@"
+		;;
+	esac
+}
+
+_gameoftrees "$@"
