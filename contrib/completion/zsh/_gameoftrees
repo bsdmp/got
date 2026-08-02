@@ -11,7 +11,7 @@ _got_branch_names() {
   local -a expl
 
   _got_branches
-  _description branches expl 'branch'
+  _description branches expl 'branch name'
   compadd "$@" "$expl[@]" -a reply
 }
 
@@ -47,7 +47,7 @@ _got_remote_names() {
   local -a expl
 
   _got_remotes
-  _description remotes expl 'remote'
+  _description remotes expl 'remote repository'
   compadd "$@" "$expl[@]" -a reply
 }
 
@@ -62,7 +62,7 @@ _got_tag_names() {
   local -a expl
 
   _got_tags
-  _description tags expl 'tag'
+  _description tags expl 'tag name'
   compadd "$@" "$expl[@]" -a reply
 }
 
@@ -77,7 +77,7 @@ _got_ref_names() {
   local -a expl
 
   _got_refs
-  _description references expl 'reference'
+  _description references expl 'reference name'
   compadd "$@" "$expl[@]" -a reply
 }
 
@@ -132,7 +132,7 @@ _got_add_files() {
   local -a expl
 
   _got_add_paths
-  _description files expl 'file'
+  _description files expl 'unversioned file'
   compadd "$@" "$expl[@]" -f -a reply
 }
 
@@ -144,7 +144,7 @@ _got_revert_files() {
   local -a expl
 
   _got_revert_paths
-  _description files expl 'file'
+  _description files expl 'changed file'
   compadd "$@" "$expl[@]" -f -a reply
 }
 
@@ -156,7 +156,7 @@ _got_stage_files() {
   local -a expl
 
   _got_stage_paths
-  _description files expl 'file'
+  _description files expl 'unstaged file'
   compadd "$@" "$expl[@]" -f -a reply
 }
 
@@ -168,7 +168,7 @@ _got_unstage_files() {
   local -a expl
 
   _got_unstage_paths
-  _description files expl 'file'
+  _description files expl 'staged file'
   compadd "$@" "$expl[@]" -f -a reply
 }
 
