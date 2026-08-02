@@ -496,7 +496,7 @@ _got-status() {
 }
 
 _got() {
-  local line state
+  local curcontext="$curcontext" line state
 
   _arguments -C \
     '1: :->command' \
@@ -537,6 +537,7 @@ _got() {
       'info[display work tree meta-data]'
     ;;
   args)
+    curcontext=${curcontext%:*}-$line[1]:
     case $line[1] in
     init)
       _got-init
@@ -709,7 +710,7 @@ _gotadmin-load() {
 }
 
 _gotadmin() {
-  local line state
+  local curcontext="$curcontext" line state
 
   _arguments -C \
     '1: :->command' \
@@ -728,6 +729,7 @@ _gotadmin() {
       'load[load a Git bundle into a repository]'
     ;;
   args)
+    curcontext=${curcontext%:*}-$line[1]:
     case $line[1] in
     init)
       _gotadmin-init
@@ -797,7 +799,7 @@ _tog-ref() {
 }
 
 _tog() {
-  local line state
+  local curcontext="$curcontext" line state
 
   _arguments -C \
     '1: :->command' \
@@ -813,6 +815,7 @@ _tog() {
       'ref[display references in a repository]'
     ;;
   args)
+    curcontext=${curcontext%:*}-$line[1]:
     case $line[1] in
     log)
       _tog-log
