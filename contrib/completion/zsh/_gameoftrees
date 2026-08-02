@@ -110,7 +110,8 @@ _got_remove_status_codes() {
 _got_status_paths() {
   local root prefix paths
 
-  # 'got' subcommands taking a path argument expect paths relative to $PWD
+  # 'got' subcommands like add/sg/rv/etc taking path argument, expect paths be
+  # relative to $PWD
   _got_worktree_path
   root=$reply[1]
   prefix=
