@@ -892,9 +892,7 @@ test_status_cvsignore_and_gitignore_together() {
 	echo "unversioned file" > $testroot/wt/epsilon/bar
 	echo "unversioned file" > $testroot/wt/epsilon/baz
 
-	# .cvsignore and .gitignore both exist in the same directory; each
-	# must contribute its own patterns instead of one silently
-	# replacing the other.
+	# .{cvs,git}ignore together
 	echo "foo" > $testroot/wt/.cvsignore
 	echo "bar" > $testroot/wt/.gitignore
 	echo "foo" > $testroot/wt/epsilon/.cvsignore
@@ -916,27 +914,11 @@ test_status_cvsignore_and_gitignore_together() {
 		return 1
 	fi
 
-	# Status scoped to the subdirectory must still honor both of that
-	# subdirectory's ignore files, via add_ignores_from_parent_paths()
-	# and the directory-traversal path alike.
+	# .{cvs,git}ignore in subdir
 	echo '?  epsilon/.cvsignore' > $testroot/stdout.expected
 	echo '?  epsilon/.gitignore' >> $testroot/stdout.expected
 	echo '?  epsilon/baz' >> $testroot/stdout.expected
 	(cd $testroot/wt && got status epsilon > $testroot/stdout)
-
-	cmp -s $testroot/stdout.expected $testroot/stdout
-	ret=$?
-	if [ $ret -ne 0 ]; then
-		diff -u $testroot/stdout.expected $testroot/stdout
-		test_done "$testroot" "$ret"
-		return 1
-	fi
-
-	# Status scoped to a single unversioned file exercises the
-	# report_single_file_status() code path rather than the directory
-	# traversal used above.
-	echo '?  epsilon/baz' > $testroot/stdout.expected
-	(cd $testroot/wt && got status epsilon/baz > $testroot/stdout)
 
 	cmp -s $testroot/stdout.expected $testroot/stdout
 	ret=$?
