@@ -3807,16 +3807,44 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 	const struct got_error *err = NULL;
 	struct got_pathlist_entry *pe = NULL;
 	struct got_pathlist_head *ignorelist;
-	char *dirpath = NULL;
+	char *line = NULL, *pattern, *dirpath = NULL;
+	size_t linesize = 0;
+	ssize_t linelen;
 
 	ignorelist = calloc(1, sizeof(*ignorelist));
 	if (ignorelist == NULL)
 		return got_error_from_errno("calloc");
 	RB_INIT(ignorelist);
 
-	err = got_path_read_ignore_patterns(ignorelist, f, path);
-	if (err)
+	while ((linelen = getline(&line, &linesize, f)) != -1) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
+
+		/* Skip blank lines. */
+		if (line[0] == '\0')
+			continue;
+
+		/* Git's ignores may contain comments. */
+		if (line[0] == '#')
+			continue;
+
+		/* Git's negated patterns are not (yet?) supported. */
+		if (line[0] == '!')
+			continue;
+
+		if (asprintf(&pattern, "%s%s%s", path, path[0] ? "/" : "",
+		    line) == -1) {
+			err = got_error_from_errno("asprintf");
+			goto done;
+		}
+		err = got_pathlist_insert(NULL, ignorelist, pattern, NULL);
+		if (err)
+			goto done;
+	}
+	if (ferror(f)) {
+		err = got_error_from_errno("getline");
 		goto done;
+	}
 
 	dirpath = strdup(path);
 	if (dirpath == NULL) {
@@ -3825,6 +3853,7 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 	}
 	err = got_pathlist_insert(&pe, ignores, dirpath, ignorelist);
 done:
+	free(line);
 	if (err || pe == NULL) {
 		free(dirpath);
 		got_pathlist_free(ignorelist, GOT_PATHLIST_FREE_PATH);
