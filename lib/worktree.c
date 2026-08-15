@@ -3662,11 +3662,6 @@ done:
 	return err;
 }
 
-struct got_ignores {
-	struct got_pathlist_head cvs;
-	struct got_pathlist_head git;
-};
-
 struct diff_dir_cb_arg {
     struct got_fileindex *fileindex;
     struct got_worktree *worktree;
@@ -3677,7 +3672,8 @@ struct diff_dir_cb_arg {
     void *status_arg;
     got_cancel_cb cancel_cb;
     void *cancel_arg;
-    struct got_ignores *ignores;
+    /* A pathlist containing per-directory pathlists of ignore patterns. */
+    struct got_pathlist_head *ignores;
     int report_unchanged;
     int no_ignores;
 };
@@ -3782,7 +3778,7 @@ status_old(void *arg, struct got_fileindex_entry *ie, const char *parent_path)
 }
 
 static void
-free_ignore_list(struct got_pathlist_head *ignores)
+free_ignores(struct got_pathlist_head *ignores)
 {
 	struct got_pathlist_entry *pe;
 
@@ -3794,27 +3790,39 @@ free_ignore_list(struct got_pathlist_head *ignores)
 	got_pathlist_free(ignores, GOT_PATHLIST_FREE_ALL);
 }
 
-static void
-free_ignores(struct got_ignores *ignores)
-{
-	free_ignore_list(&ignores->cvs);
-	free_ignore_list(&ignores->git);
-}
-
+/*
+ * Parse ignore patterns from f and add them to the per-directory
+ * ignore list for 'path' in 'ignores'. This function is called once
+ * per ignore file found in a given directory (e.g. once for
+ * .cvsignore and once for .gitignore), so if a list for 'path'
+ * already exists its patterns are merged into that same list rather
+ * than being kept in a separate list which would then be discarded
+ * due to the duplicate key.
+ */
 static const struct got_error *
 read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 {
 	const struct got_error *err = NULL;
 	struct got_pathlist_entry *pe = NULL;
 	struct got_pathlist_head *ignorelist;
+	struct got_pathlist_entry find;
 	char *line = NULL, *pattern, *dirpath = NULL;
 	size_t linesize = 0;
 	ssize_t linelen;
+	int new_list = 0;
 
-	ignorelist = calloc(1, sizeof(*ignorelist));
-	if (ignorelist == NULL)
-		return got_error_from_errno("calloc");
-	RB_INIT(ignorelist);
+	find.path = path;
+	find.path_len = strlen(path);
+	pe = RB_FIND(got_pathlist_head, ignores, &find);
+	if (pe != NULL) {
+		ignorelist = pe->data;
+	} else {
+		ignorelist = calloc(1, sizeof(*ignorelist));
+		if (ignorelist == NULL)
+			return got_error_from_errno("calloc");
+		RB_INIT(ignorelist);
+		new_list = 1;
+	}
 
 	while ((linelen = getline(&line, &linesize, f)) != -1) {
 		if (linelen > 0 && line[linelen - 1] == '\n')
@@ -3846,15 +3854,17 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 		goto done;
 	}
 
-	dirpath = strdup(path);
-	if (dirpath == NULL) {
-		err = got_error_from_errno("strdup");
-		goto done;
+	if (new_list) {
+		dirpath = strdup(path);
+		if (dirpath == NULL) {
+			err = got_error_from_errno("strdup");
+			goto done;
+		}
+		err = got_pathlist_insert(&pe, ignores, dirpath, ignorelist);
 	}
-	err = got_pathlist_insert(&pe, ignores, dirpath, ignorelist);
 done:
 	free(line);
-	if (err || pe == NULL) {
+	if (new_list && (err || pe == NULL)) {
 		free(dirpath);
 		got_pathlist_free(ignorelist, GOT_PATHLIST_FREE_PATH);
 		free(ignorelist);
@@ -3893,7 +3903,7 @@ match_path(const char *pattern, size_t pattern_len, const char *path,
 }
 
 static int
-match_dir_ignores(struct got_pathlist_head *ignores, const char *path)
+match_ignores(struct got_pathlist_head *ignores, const char *path)
 {
 	struct got_pathlist_entry *pe;
 
@@ -3948,16 +3958,6 @@ match_dir_ignores(struct got_pathlist_head *ignores, const char *path)
 		pe = RB_PREV(got_pathlist_head, ignores, pe);
 	}
 
-	return 0;
-}
-
-static int
-match_ignores(struct got_ignores *ignores, const char *path)
-{
-	if (match_dir_ignores(&ignores->cvs, path))
-		return 1;
-	if (match_dir_ignores(&ignores->git, path))
-		return 1;
 	return 0;
 }
 
@@ -4055,12 +4055,12 @@ status_traverse(void *arg, const char *path, int dirfd)
 	if (a->no_ignores)
 		return NULL;
 
-	err = add_ignores(&a->ignores->cvs, a->worktree->root_path,
+	err = add_ignores(a->ignores, a->worktree->root_path,
 	    path, dirfd, ".cvsignore");
 	if (err)
 		return err;
 
-	err = add_ignores(&a->ignores->git, a->worktree->root_path, path,
+	err = add_ignores(a->ignores, a->worktree->root_path, path,
 	    dirfd, ".gitignore");
 
 	return err;
@@ -4070,7 +4070,7 @@ static const struct got_error *
 report_single_file_status(const char *path, const char *ondisk_path,
     struct got_fileindex *fileindex, got_worktree_status_cb status_cb,
     void *status_arg, struct got_repository *repo, int report_unchanged,
-    struct got_ignores *ignores, int no_ignores)
+    struct got_pathlist_head *ignores, int no_ignores)
 {
 	struct got_fileindex_entry *ie;
 	struct stat sb;
@@ -4098,18 +4098,18 @@ report_single_file_status(const char *path, const char *ondisk_path,
 }
 
 static const struct got_error *
-add_ignores_from_parent_paths(struct got_ignores *ignores,
+add_ignores_from_parent_paths(struct got_pathlist_head *ignores,
     const char *root_path, const char *path)
 {
 	const struct got_error *err;
 	char *parent_path, *next_parent_path = NULL;
 
-	err = add_ignores(&ignores->cvs, root_path, "", -1,
+	err = add_ignores(ignores, root_path, "", -1,
 	    ".cvsignore");
 	if (err)
 		return err;
 
-	err = add_ignores(&ignores->git, root_path, "", -1,
+	err = add_ignores(ignores, root_path, "", -1,
 	    ".gitignore");
 	if (err)
 		return err;
@@ -4121,11 +4121,11 @@ add_ignores_from_parent_paths(struct got_ignores *ignores,
 		return err;
 	}
 	for (;;) {
-		err = add_ignores(&ignores->cvs, root_path, parent_path, -1,
+		err = add_ignores(ignores, root_path, parent_path, -1,
 		    ".cvsignore");
 		if (err)
 			break;
-		err = add_ignores(&ignores->git, root_path, parent_path, -1,
+		err = add_ignores(ignores, root_path, parent_path, -1,
 		    ".gitignore");
 		if (err)
 			break;
@@ -4177,7 +4177,7 @@ static const struct got_error *
 report_children(struct got_pathlist_head *children,
     struct got_worktree *worktree, struct got_fileindex *fileindex,
     struct got_repository *repo, int is_root_dir, int report_unchanged,
-    struct got_ignores *ignores, int no_ignores,
+    struct got_pathlist_head *ignores, int no_ignores,
     got_worktree_status_cb status_cb, void *status_arg,
     got_cancel_cb cancel_cb, void *cancel_arg)
 {
@@ -4225,12 +4225,10 @@ worktree_status(struct got_worktree *worktree, const char *path,
 	struct got_fileindex_diff_dir_cb fdiff_cb;
 	struct diff_dir_cb_arg arg;
 	char *ondisk_path = NULL;
-	struct got_ignores ignores;
-	struct got_pathlist_head missing_children;
+	struct got_pathlist_head ignores, missing_children;
 	struct got_fileindex_entry *ie;
 
-	RB_INIT(&ignores.cvs);
-	RB_INIT(&ignores.git);
+	RB_INIT(&ignores);
 	RB_INIT(&missing_children);
 
 	if (asprintf(&ondisk_path, "%s%s%s",
