@@ -3802,7 +3802,10 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 	ssize_t linelen;
 	int new_list = 0;
 
-	/* Reuse an existing list for this path, e.g. from .cvsignore. */
+	/*
+	 * Check whether an ignorelist for this path already exists; this
+	 * happens when both .cvsignore and .gitignore exist in the directory.
+	 */
 	find.path = path;
 	find.path_len = strlen(path);
 	pe = RB_FIND(got_pathlist_head, ignores, &find);
