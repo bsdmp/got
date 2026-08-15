@@ -3790,15 +3790,6 @@ free_ignores(struct got_pathlist_head *ignores)
 	got_pathlist_free(ignores, GOT_PATHLIST_FREE_ALL);
 }
 
-/*
- * Parse ignore patterns from f and add them to the per-directory
- * ignore list for 'path' in 'ignores'. This function is called once
- * per ignore file found in a given directory (e.g. once for
- * .cvsignore and once for .gitignore), so if a list for 'path'
- * already exists its patterns are merged into that same list rather
- * than being kept in a separate list which would then be discarded
- * due to the duplicate key.
- */
 static const struct got_error *
 read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 {
@@ -3811,6 +3802,7 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 	ssize_t linelen;
 	int new_list = 0;
 
+	/* Reuse an existing list for this path, e.g. from .cvsignore. */
 	find.path = path;
 	find.path_len = strlen(path);
 	pe = RB_FIND(got_pathlist_head, ignores, &find);
