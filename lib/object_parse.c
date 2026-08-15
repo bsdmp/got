@@ -1052,17 +1052,14 @@ got_object_parse_tag(struct got_tag_object **tag, uint8_t *buf, size_t len,
 		}
 		s += slen + 1;
 		remain -= slen + 1;
-		if (remain <= 0) {
-			err = got_error(GOT_ERR_BAD_OBJ_DATA);
-			goto done;
-		}
 	} else {
 		err = got_error(GOT_ERR_BAD_OBJ_DATA);
 		goto done;
 	}
 
 	label_len = strlen(GOT_TAG_LABEL_TAGGER);
-	if (strncmp(s, GOT_TAG_LABEL_TAGGER, label_len) == 0) {
+	if (remain >= label_len &&
+	    strncmp(s, GOT_TAG_LABEL_TAGGER, label_len) == 0) {
 		char *p;
 		size_t slen;
 
@@ -1095,7 +1092,11 @@ got_object_parse_tag(struct got_tag_object **tag, uint8_t *buf, size_t len,
 			goto done;
 		}
 	} else {
-		/* Some old tags in the Linux git repo have no tagger. */
+		/*
+		 * Some old tags (e.g. in the Linux and systemd/udev git
+		 * repositories) have no tagger, and possibly no tag
+		 * message either.
+		 */
 		(*tag)->tagger = strdup("");
 		if ((*tag)->tagger == NULL) {
 			err = got_error_from_errno("strdup");
