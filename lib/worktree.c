@@ -3859,6 +3859,7 @@ read_ignores(struct got_pathlist_head *ignores, const char *path, FILE *f)
 	}
 done:
 	free(line);
+	/* Free a freshly allocated list if it was not inserted. */
 	if (new_list && (err || pe == NULL)) {
 		free(dirpath);
 		got_pathlist_free(ignorelist, GOT_PATHLIST_FREE_PATH);
