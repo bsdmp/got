@@ -39,6 +39,7 @@ got_date_format_gmtoff(char *buf, size_t sz, time_t gmtoff)
 	snprintf(buf, sz, "%c%02lld%02lld", sign, h, m);
 }
 
+/* Breaks down t as local time if GOT_LOCALTIME is set, else as UTC. */
 struct tm *
 got_date_get_tm(const time_t *t, struct tm *tm)
 {
@@ -54,6 +55,7 @@ got_date_get_tm(const time_t *t, struct tm *tm)
 	return uselocal ? localtime_r(t, tm) : gmtime_r(t, tm);
 }
 
+/* Writes the abbreviated zone name got_date_get_tm() would use for t. */
 char *
 got_date_get_zoneabbrev(char *buf, size_t sz, time_t t)
 {
