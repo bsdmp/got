@@ -4188,7 +4188,7 @@ get_datestr(time_t *time, char *datebuf)
 	struct tm mytm, *tm;
 	char *p, *s;
 
-	tm = got_date_get_tm(time, &mytm);
+	tm = gmtime_r(time, &mytm);
 	if (tm == NULL)
 		return NULL;
 	s = asctime_r(tm, datebuf);
@@ -4386,8 +4386,8 @@ print_commit_oneline(struct got_commit_object *commit, struct got_object_id *id,
 	}
 
 	committer_time = got_object_commit_get_committer_time(commit);
-	if (got_date_get_tm(&committer_time, &tm) == NULL) {
-		err = got_error_from_errno("got_date_get_tm");
+	if (gmtime_r(&committer_time, &tm) == NULL) {
+		err = got_error_from_errno("gmtime_r");
 		goto done;
 	}
 	if (strftime(datebuf, sizeof(datebuf), "%F ", &tm) == 0) {
@@ -4482,7 +4482,7 @@ print_commit(struct got_commit_object *commit, struct got_object_id *id,
 	const struct got_error *err = NULL;
 	FILE *f = NULL;
 	char *id_str, *datestr, *logmsg0, *logmsg, *line;
-	char datebuf[26], zonebuf[GOT_TZ_ABBREV_MAX];
+	char datebuf[26];
 	time_t committer_time;
 	const char *author, *committer;
 	char *refs_str = NULL;
@@ -4520,12 +4520,8 @@ print_commit(struct got_commit_object *commit, struct got_object_id *id,
 		printf("via: %s\n", committer);
 	committer_time = got_object_commit_get_committer_time(commit);
 	datestr = get_datestr(&committer_time, datebuf);
-	if (datestr) {
-		if (got_date_get_zoneabbrev(zonebuf, sizeof(zonebuf),
-		    committer_time) == NULL)
-			strlcpy(zonebuf, "UTC", sizeof(zonebuf));
-		printf("date: %s %s\n", datestr, zonebuf);
-	}
+	if (datestr)
+		printf("date: %s UTC\n", datestr);
 	if (got_object_commit_get_nparents(commit) > 1) {
 		const struct got_object_id_queue *parent_ids;
 		struct got_object_qid *qid;
@@ -5897,8 +5893,8 @@ blame_cb(void *arg, int nlines, int lineno,
 	}
 
 	committer_time = got_object_commit_get_committer_time(commit);
-	if (got_date_get_tm(&committer_time, &tm) == NULL)
-		return got_error_from_errno("got_date_get_tm");
+	if (gmtime_r(&committer_time, &tm) == NULL)
+		return got_error_from_errno("gmtime_r");
 	if (strftime(bline->datebuf, sizeof(bline->datebuf), "%F", &tm) == 0) {
 		err = got_error(GOT_ERR_NO_SPACE);
 		goto done;
@@ -7615,8 +7611,8 @@ print_tag_oneline(struct got_tag_object *tag, struct got_commit_object *commit,
 	char *tagmsg0 = NULL, *tagmsg;
 	char datebuf[11];
 
-	if (got_date_get_tm(&tagger_time, &tm) == NULL)
-		return got_error_from_errno("got_date_get_tm");
+	if (gmtime_r(&tagger_time, &tm) == NULL)
+		return got_error_from_errno("gmtime_r");
 	if (strftime(datebuf, sizeof(datebuf), "%F", &tm) == 0)
 		return got_error(GOT_ERR_NO_SPACE);
 
@@ -7676,18 +7672,14 @@ print_tag(struct got_tag_object *tag, struct got_commit_object *commit,
     int *bad_sigs)
 {
 	static const struct got_error *err = NULL;
-	char datebuf[26], zonebuf[GOT_TZ_ABBREV_MAX];
+	char datebuf[26];
 	char *sig_msg = NULL, *tagmsg0 = NULL, *tagmsg, *line, *datestr;
 
 	printf("%stag %s %s\n", GOT_COMMIT_SEP_STR, refname, refstr);
 	printf("from: %s\n", tagger);
 	datestr = get_datestr(&tagger_time, datebuf);
-	if (datestr) {
-		if (got_date_get_zoneabbrev(zonebuf, sizeof(zonebuf),
-		    tagger_time) == NULL)
-			strlcpy(zonebuf, "UTC", sizeof(zonebuf));
-		printf("date: %s %s\n", datestr, zonebuf);
-	}
+	if (datestr)
+		printf("date: %s UTC\n", datestr);
 	if (commit)
 		printf("object: %s %s\n", GOT_OBJ_LABEL_COMMIT, id_str);
 	else {
@@ -11275,8 +11267,8 @@ get_commit_brief_str(char **brief_str, struct got_commit_object *commit)
 	char *logmsg0 = NULL, *logmsg, *newline;
 
 	committer_time = got_object_commit_get_committer_time(commit);
-	if (got_date_get_tm(&committer_time, &tm) == NULL)
-		return got_error_from_errno("got_date_get_tm");
+	if (gmtime_r(&committer_time, &tm) == NULL)
+		return got_error_from_errno("gmtime_r");
 	if (strftime(datebuf, sizeof(datebuf), "%F", &tm) == 0)
 		return got_error(GOT_ERR_NO_SPACE);
 
