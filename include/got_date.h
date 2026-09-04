@@ -16,3 +16,8 @@
 
 void
 got_date_format_gmtoff(char *, size_t, time_t);
+
+#define GOT_TZ_ABBREV_MAX	16
+
+struct tm *got_date_get_tm(const time_t *, struct tm *);
+char *got_date_get_zoneabbrev(char *, size_t, time_t);

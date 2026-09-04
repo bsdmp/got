@@ -70,6 +70,44 @@ test_log_in_bare_repo() {
 	test_done "$testroot" "0"
 }
 
+test_log_got_localtime() {
+	local testroot=`test_init log_got_localtime`
+
+	echo "1" > $testroot/repo/numbers
+	git -C $testroot/repo add numbers
+	GIT_AUTHOR_DATE="1700000000 +0000" \
+	    GIT_COMMITTER_DATE="1700000000 +0000" \
+	    git -C $testroot/repo commit -q --author="$GOT_AUTHOR" \
+	    -m "pin commit date"
+	maybe_pack_repo $testroot/repo
+
+	# 1700000000 is 2023-11-14 22:13:20 UTC, i.e. 2023-11-15 07:13:20 JST
+	# (Asia/Tokyo is a fixed UTC+9 offset with no daylight saving, so
+	# this conversion is not affected by the date the test itself runs).
+	echo "date: Tue Nov 14 22:13:20 2023 UTC" > $testroot/stdout.expected
+	(cd $testroot/repo && TZ="Asia/Tokyo" got log -l1 | grep ^date: \
+	    > $testroot/stdout)
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "date without GOT_LOCALTIME set is wrong" >&2
+		diff -u $testroot/stdout.expected $testroot/stdout
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	echo "date: Wed Nov 15 07:13:20 2023 JST" > $testroot/stdout.expected
+	(cd $testroot/repo && TZ="Asia/Tokyo" GOT_LOCALTIME=1 got log -l1 | \
+	    grep ^date: > $testroot/stdout)
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "date with GOT_LOCALTIME=1 is wrong" >&2
+		diff -u $testroot/stdout.expected $testroot/stdout
+	fi
+	test_done "$testroot" "$ret"
+}
+
 test_log_in_worktree() {
 	local testroot=`test_init log_in_worktree 1`
 
@@ -1306,6 +1344,7 @@ EOF
 test_parseargs "$@"
 run_test test_log_in_repo
 run_test test_log_in_bare_repo
+run_test test_log_got_localtime
 run_test test_log_in_worktree
 run_test test_log_in_worktree_with_path_prefix
 run_test test_log_tag
