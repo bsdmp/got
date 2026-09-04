@@ -17,6 +17,11 @@
 void
 got_date_format_gmtoff(char *, size_t, time_t);
 
+/*
+ * TZNAME_MAX is not guaranteed to exist and _POSIX_TZNAME_MAX is only 6,
+ * too small since a quoted TZ abbreviation such as "<CEST+13:00>" can
+ * contain digits and punctuation and run longer than real-world names.
+ */
 #define GOT_TZ_ABBREV_MAX	16
 
 struct tm *got_date_get_tm(const time_t *, struct tm *);
