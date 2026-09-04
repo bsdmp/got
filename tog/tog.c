@@ -6028,7 +6028,7 @@ write_commit_info(struct got_diff_line **lines, size_t *nlines,
 		    committer_time) != NULL)
 			n = fprintf(outfile, "date: %s %s\n", datestr, zonebuf);
 		else
-			n = fprintf(outfile, "date: %s\n", datestr);
+			n = fprintf(outfile, "date: %s UTC\n", datestr);
 		if (n < 0) {
 			err = got_error_from_errno("fprintf");
 			goto done;
