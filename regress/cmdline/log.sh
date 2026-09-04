@@ -104,6 +104,25 @@ test_log_got_localtime() {
 	if [ $ret -ne 0 ]; then
 		echo "date with GOT_LOCALTIME=1 is wrong" >&2
 		diff -u $testroot/stdout.expected $testroot/stdout
+		test_done "$testroot" "$ret"
+		return 1
+	fi
+
+	# The quoted form of a POSIX TZ abbreviation (the <...> part) can be
+	# longer than got's internal zone abbreviation buffer; "-13" is the
+	# actual UTC offset (POSIX's sign convention: minus means east of
+	# Greenwich, so this is UTC+13). got must then fall back to
+	# displaying a numeric UTC offset instead of a truncated or bogus
+	# zone name.
+	echo "date: Wed Nov 15 11:13:20 2023 +1300" > $testroot/stdout.expected
+	(cd $testroot/repo && \
+	    TZ="<ThisIsAVeryLongTimeZoneAbbreviation>-13" \
+	    GOT_LOCALTIME=1 got log -l1 | grep ^date: > $testroot/stdout)
+	cmp -s $testroot/stdout.expected $testroot/stdout
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "date with an overly long TZ abbreviation is wrong" >&2
+		diff -u $testroot/stdout.expected $testroot/stdout
 	fi
 	test_done "$testroot" "$ret"
 }
