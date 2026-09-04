@@ -85,8 +85,8 @@ test_log_got_localtime() {
 	# (Asia/Tokyo is a fixed UTC+9 offset with no daylight saving, so
 	# this conversion is not affected by the date the test itself runs).
 	echo "date: Tue Nov 14 22:13:20 2023 UTC" > $testroot/stdout.expected
-	(cd $testroot/repo && TZ="Asia/Tokyo" got log -l1 | grep ^date: \
-	    > $testroot/stdout)
+	(cd $testroot/repo && unset GOT_LOCALTIME && TZ="Asia/Tokyo" got log \
+	    -l1 | grep ^date: > $testroot/stdout)
 	cmp -s $testroot/stdout.expected $testroot/stdout
 	ret=$?
 	if [ $ret -ne 0 ]; then
