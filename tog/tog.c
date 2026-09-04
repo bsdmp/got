@@ -6025,9 +6025,10 @@ write_commit_info(struct got_diff_line **lines, size_t *nlines,
 	datestr = get_datestr(&committer_time, datebuf);
 	if (datestr) {
 		if (got_date_get_zoneabbrev(zonebuf, sizeof(zonebuf),
-		    committer_time) == NULL)
-			strlcpy(zonebuf, "UTC", sizeof(zonebuf));
-		n = fprintf(outfile, "date: %s %s\n", datestr, zonebuf);
+		    committer_time) != NULL)
+			n = fprintf(outfile, "date: %s %s\n", datestr, zonebuf);
+		else
+			n = fprintf(outfile, "date: %s\n", datestr);
 		if (n < 0) {
 			err = got_error_from_errno("fprintf");
 			goto done;

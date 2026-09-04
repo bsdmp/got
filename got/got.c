@@ -4522,9 +4522,10 @@ print_commit(struct got_commit_object *commit, struct got_object_id *id,
 	datestr = get_datestr(&committer_time, datebuf);
 	if (datestr) {
 		if (got_date_get_zoneabbrev(zonebuf, sizeof(zonebuf),
-		    committer_time) == NULL)
-			strlcpy(zonebuf, "UTC", sizeof(zonebuf));
-		printf("date: %s %s\n", datestr, zonebuf);
+		    committer_time) != NULL)
+			printf("date: %s %s\n", datestr, zonebuf);
+		else
+			printf("date: %s\n", datestr);
 	}
 	if (got_object_commit_get_nparents(commit) > 1) {
 		const struct got_object_id_queue *parent_ids;
@@ -7684,9 +7685,10 @@ print_tag(struct got_tag_object *tag, struct got_commit_object *commit,
 	datestr = get_datestr(&tagger_time, datebuf);
 	if (datestr) {
 		if (got_date_get_zoneabbrev(zonebuf, sizeof(zonebuf),
-		    tagger_time) == NULL)
-			strlcpy(zonebuf, "UTC", sizeof(zonebuf));
-		printf("date: %s %s\n", datestr, zonebuf);
+		    tagger_time) != NULL)
+			printf("date: %s %s\n", datestr, zonebuf);
+		else
+			printf("date: %s\n", datestr);
 	}
 	if (commit)
 		printf("object: %s %s\n", GOT_OBJ_LABEL_COMMIT, id_str);

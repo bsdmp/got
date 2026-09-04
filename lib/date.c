@@ -55,7 +55,10 @@ got_date_get_tm(const time_t *t, struct tm *tm)
 	return uselocal ? localtime_r(t, tm) : gmtime_r(t, tm);
 }
 
-/* Writes the abbreviated zone name got_date_get_tm() would use for t. */
+/*
+ * Writes the abbreviated zone name got_date_get_tm() would use for t,
+ * or its numeric UTC offset if the abbreviation does not fit in sz.
+ */
 char *
 got_date_get_zoneabbrev(char *buf, size_t sz, time_t t)
 {
@@ -63,8 +66,9 @@ got_date_get_zoneabbrev(char *buf, size_t sz, time_t t)
 
 	if (got_date_get_tm(&t, &tm) == NULL)
 		return NULL;
-	if (strftime(buf, sz, "%Z", &tm) == 0)
-		return NULL;
+	if (strftime(buf, sz, "%Z", &tm) != 0)
+		return buf;
 
+	got_date_format_gmtoff(buf, sz, tm.tm_gmtoff);
 	return buf;
 }
